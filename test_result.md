@@ -285,3 +285,5 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: "Initial implementation completed for personal portfolio website with courses and payment integration. All backend APIs implemented with Stripe integration using emergentintegrations library. Frontend implemented with React, complete UI for personal info, courses, and payment options. MongoDB models and sample data initialized. Ready for comprehensive testing."
+  - agent: "testing"
+    message: "✅ BACKEND TESTING COMPLETED: All 5 backend tasks tested successfully. Fixed critical issue with environment variables not being loaded in supervisor config. All APIs working: Personal Info (✅), Courses (✅), Packages (✅), Stripe Payment Integration (✅), MongoDB Data (✅). Created comprehensive test suite in backend_test.py. 100% success rate on all backend functionality."
