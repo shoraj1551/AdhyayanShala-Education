@@ -335,14 +335,6 @@ async def handle_stripe_webhook(request: Request):
 async def get_packages():
     return COURSE_PACKAGES
 
-@app.get("/api/debug-env")
-async def debug_env():
-    return {
-        "stripe_key_exists": bool(STRIPE_API_KEY),
-        "stripe_key_length": len(STRIPE_API_KEY) if STRIPE_API_KEY else 0,
-        "stripe_key_prefix": STRIPE_API_KEY[:10] if STRIPE_API_KEY else "None"
-    }
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
