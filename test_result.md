@@ -111,11 +111,14 @@ backend:
     file: "server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Implemented GET /api/personal-info endpoint with complete personal information including bio, skills, experience, contact, and social links"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: API returns complete personal information for Shoraj Tomer with 10 skills and 3 experience entries. All required fields present and properly structured."
 
   - task: "Courses API"
     implemented: true
