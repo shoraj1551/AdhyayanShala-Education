@@ -171,11 +171,14 @@ backend:
     file: "server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Implemented MongoDB collections for courses, users, and payment_transactions with sample data initialization"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: MongoDB properly initialized with 3 sample courses using UUID IDs (not ObjectIds). Data structure is JSON serializable and properly formatted."
 
 frontend:
   - task: "Hero Section with Personal Information"
