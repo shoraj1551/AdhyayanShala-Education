@@ -1,7 +1,30 @@
 {
   "name": "shorajtomer.me",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "description": "Personal portfolio and educational platform by Shoraj Tomer",
+  "author": {
+    "name": "Shoraj Tomer",
+    "email": "contact@shorajtomer.me",
+    "url": "https://shorajtomer.me"
+  },
+  "homepage": "https://shorajtomer.me",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shorajtomer/shorajtomer.me.git"
+  },
+  "keywords": [
+    "portfolio",
+    "next.js",
+    "react",
+    "typescript",
+    "tailwind",
+    "supabase",
+    "stripe",
+    "education",
+    "blog",
+    "courses"
+  ],
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

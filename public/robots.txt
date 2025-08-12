@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /auth/
+
+# Sitemap
+Sitemap: https://shorajtomer.me/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Specific rules for search engines
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+
+# Block access to sensitive areas
+User-agent: *
+Disallow: /.env
+Disallow: /.git/
+Disallow: /node_modules/

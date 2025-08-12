@@ -1,14 +1,14 @@
 # Deployment Guide - Shoraj Tomer Portfolio
 
-This guide covers deploying your Next.js portfolio to Vercel with Supabase and Stripe integration.
+This guide covers deploying your Next.js portfolio to Vercel with your custom domain `shorajtomer.me`.
 
 ## Prerequisites
 
 - Node.js 18+ installed
 - Vercel account
-- Supabase account
+- Supabase account  
 - Stripe account
-- Domain name (optional)
+- Custom domain: **shorajtomer.me** (already configured)
 
 ## Environment Variables
 
@@ -23,7 +23,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # Authentication
-NEXTAUTH_URL=https://yourdomain.com
+NEXTAUTH_URL=https://shorajtomer.me
 NEXTAUTH_SECRET=your_nextauth_secret_key
 
 # Stripe
@@ -32,10 +32,13 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_your_stripe_publishable_key
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 
 # Admin Configuration
-ADMIN_EMAILS=your-email@example.com,another-admin@example.com
+ADMIN_EMAILS=shoraj@shorajtomer.me,admin@shorajtomer.me
 
-# Optional
-NEXT_PUBLIC_SITE_URL=https://yourdomain.com
+# Site Configuration
+NEXT_PUBLIC_SITE_URL=https://shorajtomer.me
+
+# Production Environment
+NODE_ENV=production
 ```
 
 ## 1. Supabase Setup
@@ -267,17 +270,20 @@ CREATE TRIGGER handle_updated_at BEFORE UPDATE ON public.tests FOR EACH ROW EXEC
 In your Supabase dashboard:
 
 1. Go to Authentication > Settings
-2. Configure Site URL: `https://yourdomain.com`
+2. Configure Site URL: `https://shorajtomer.me`
 3. Add Redirect URLs:
-   - `https://yourdomain.com/auth/callback`
+   - `https://shorajtomer.me/auth/callback`
    - `http://localhost:3000/auth/callback` (for development)
+4. Additional allowed URLs:
+   - `https://shorajtomer.me/**`
+   - `https://www.shorajtomer.me/**` (if using www subdomain)
 
 ## 2. Stripe Setup
 
 ### Webhook Configuration
 
 1. Go to Stripe Dashboard > Webhooks
-2. Create a new endpoint: `https://yourdomain.com/api/webhooks/stripe`
+2. Create a new endpoint: `https://shorajtomer.me/api/webhooks/stripe`
 3. Select these events:
    - `checkout.session.completed`
    - `payment_intent.succeeded`
@@ -298,12 +304,26 @@ Create products in Stripe dashboard for your courses and workshops, or use the A
 4. Set install command: `npm install`
 5. Deploy!
 
-### Custom Domain (Optional)
+### Custom Domain Configuration
 
 1. Go to Vercel dashboard > Domains
-2. Add your custom domain
-3. Configure DNS records as instructed
-4. Update `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL`
+2. Add your custom domain: `shorajtomer.me`
+3. Configure DNS records as instructed by Vercel:
+   - Add A record pointing to Vercel's IP
+   - Add CNAME for www (optional): `www.shorajtomer.me` → `shorajtomer.me`
+4. Verify domain ownership
+5. Enable HTTPS (automatic with Vercel)
+
+**DNS Configuration Example:**
+```
+Type: A
+Name: @
+Value: 76.76.19.61 (Vercel IP - check Vercel dashboard for current IP)
+
+Type: CNAME  
+Name: www
+Value: cname.vercel-dns.com
+```
 
 ## 4. Post-Deployment Configuration
 

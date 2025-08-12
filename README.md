@@ -76,7 +76,7 @@ A modern, full-stack personal portfolio website featuring educational content, e
 
 ### Clone Repository
 ```bash
-git clone https://github.com/yourusername/shorajtomer.me.git
+git clone https://github.com/shorajtomer/shorajtomer.me.git
 cd shorajtomer.me
 ```
 
@@ -102,10 +102,14 @@ STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 # Admin Configuration
 ADMIN_EMAILS=your-email@example.com
 
-# Optional
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXTAUTH_URL=http://localhost:3000
+# Site Configuration (Production)
+NEXT_PUBLIC_SITE_URL=https://shorajtomer.me
+NEXTAUTH_URL=https://shorajtomer.me
 NEXTAUTH_SECRET=your_nextauth_secret_key
+
+# For local development, use:
+# NEXT_PUBLIC_SITE_URL=http://localhost:3000
+# NEXTAUTH_URL=http://localhost:3000
 ```
 
 ### Database Setup
@@ -294,9 +298,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support, questions, or feedback:
 - Create an issue in the repository
-- Email: support@shorajtomer.me
+- Email: contact@shorajtomer.me
 - Website: [shorajtomer.me](https://shorajtomer.me)
+- LinkedIn: [Shoraj Tomer](https://linkedin.com/in/shorajtomer)
 
 ---
 
-Built with ❤️ by [Shoraj Tomer](https://github.com/shorajtomer)
+Built with ❤️ by [Shoraj Tomer](https://github.com/shorajtomer)  
+🌐 Live at [shorajtomer.me](https://shorajtomer.me)
