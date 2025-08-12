@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create line items for Stripe
-    const lineItems = items.map((item: any) => ({
+    const lineItems = items.map((item: { name: string; price: number; id: string; type: string; description?: string; images?: string[]; quantity?: number }) => ({
       price_data: {
         currency: 'usd',
         product_data: {
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ sessionId: session.id, url: session.url })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating checkout session:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

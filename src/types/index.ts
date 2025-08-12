@@ -66,7 +66,7 @@ export interface Course {
   level: 'beginner' | 'intermediate' | 'advanced'
   thumbnail_url?: string
   preview_video_url?: string
-  modules: any[]
+  modules: Record<string, unknown>[]
   requirements: string[]
   what_you_learn: string[]
   is_published: boolean
@@ -109,7 +109,7 @@ export interface Test {
   description?: string
   category_id?: string
   category?: Category
-  questions: any[]
+  questions: Record<string, unknown>[]
   price: number
   duration_minutes: number
   passing_score: number
@@ -131,7 +131,7 @@ export interface Enrollment {
   payment_status: 'pending' | 'completed' | 'failed' | 'refunded'
   payment_id?: string
   amount_paid?: number
-  progress: Record<string, any>
+  progress: Record<string, unknown>
   completed_at?: string
   enrolled_at: string
 }
@@ -172,7 +172,7 @@ export interface TestResult {
   user?: User
   test_id: string
   test?: Test
-  answers: Record<string, any>
+  answers: Record<string, unknown>
   score: number
   passed: boolean
   time_taken_minutes?: number
