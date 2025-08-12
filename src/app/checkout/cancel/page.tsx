@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { XCircle, ArrowLeft, ShoppingCart } from 'lucide-react'
+import { XCircle, ArrowLeft } from 'lucide-react'
 
 export default function CheckoutCancel() {
   return (

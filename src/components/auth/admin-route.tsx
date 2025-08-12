@@ -89,7 +89,7 @@ export default function AdminRoute({
             </div>
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>
-              You don't have permission to access the admin panel.
+              You don&apos;t have permission to access the admin panel.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -74,7 +74,7 @@ const readings = [
     description: "The classic guide to writing well. Concise, practical advice on the art of clear and effective communication.",
     coverUrl: "/api/placeholder/200/300",
     rating: 4,
-    review: "A compact masterpiece. Every writer should keep this book within arm's reach for quick reference.",
+    review: "A compact masterpiece. Every writer should keep this book within arm&apos;s reach for quick reference.",
     purchaseLink: "https://amazon.com/elements-style",
     featured: false,
     readingTime: "2-3 hours",
@@ -216,7 +216,7 @@ export default function Readings() {
 
                   <div className="bg-gray-50 p-3 rounded-lg mb-4">
                     <h4 className="font-medium text-sm text-gray-900 mb-1">My Review:</h4>
-                    <p className="text-sm text-gray-600 italic">"{book.review}"</p>
+                    <p className="text-sm text-gray-600 italic">&ldquo;{book.review}&rdquo;</p>
                   </div>
 
                   <div className="flex gap-2">
@@ -267,7 +267,7 @@ export default function Readings() {
                 </div>
 
                 <div className="bg-gray-50 p-2 rounded text-xs text-gray-600 italic mb-3 line-clamp-2">
-                  "{book.review}"
+                  &ldquo;{book.review}&rdquo;
                 </div>
 
                 <div className="flex gap-2">
@@ -326,7 +326,7 @@ export default function Readings() {
           <CardHeader>
             <CardTitle>Have a Book Recommendation?</CardTitle>
             <CardDescription>
-              I'm always looking for great books to read and share with the community.
+              I&apos;m always looking for great books to read and share with the community.
             </CardDescription>
           </CardHeader>
           <CardContent>

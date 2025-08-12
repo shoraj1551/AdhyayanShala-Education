@@ -144,7 +144,7 @@ export default function SettingsPage() {
                 <div className="space-y-0.5">
                   <Label>Workshop Reminders</Label>
                   <div className="text-sm text-gray-500">
-                    Reminders about upcoming workshops you've registered for
+                    Reminders about upcoming workshops you&apos;ve registered for
                   </div>
                 </div>
                 <Switch

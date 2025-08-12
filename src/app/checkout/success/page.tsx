@@ -1,14 +1,14 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, BookOpen, Calendar } from 'lucide-react'
+import { CheckCircle, BookOpen } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/protected-route'
 
-export default function CheckoutSuccess() {
+function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -49,7 +49,7 @@ export default function CheckoutSuccess() {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-medium text-gray-900 mb-2">What happens next?</h3>
               <ul className="text-sm text-gray-600 space-y-2">
-                <li>• You'll receive a confirmation email shortly</li>
+                <li>• You&apos;ll receive a confirmation email shortly</li>
                 <li>• Access your purchased content in your dashboard</li>
                 <li>• Check your enrolled courses and workshops</li>
                 <li>• Download your receipt and certificates</li>
@@ -92,5 +92,17 @@ export default function CheckoutSuccess() {
         </Card>
       </div>
     </ProtectedRoute>
+  )
+}
+
+export default function CheckoutSuccess() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <CheckoutSuccessContent />
+    </Suspense>
   )
 }

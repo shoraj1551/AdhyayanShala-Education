@@ -83,7 +83,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
           <p className="mt-2 text-lg text-gray-600">
-            Welcome back! Here's your learning progress and upcoming activities.
+            Welcome back! Here&apos;s your learning progress and upcoming activities.
           </p>
         </div>
 

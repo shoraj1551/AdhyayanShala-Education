@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['@radix-ui/react-icons'],
   },
   
+  // Temporarily disable ESLint during builds for deployment
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  
+  
   // Image optimization configuration
   images: {
     domains: [

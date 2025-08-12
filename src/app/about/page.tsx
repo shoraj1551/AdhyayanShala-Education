@@ -45,19 +45,19 @@ export default function About() {
             </CardHeader>
             <CardContent className="prose prose-lg max-w-none">
               <p>
-                Welcome to my digital space! I'm Shoraj Tomer, a passionate educator and storyteller 
+                Welcome to my digital space! I&apos;m Shoraj Tomer, a passionate educator and storyteller 
                 who believes in the transformative power of knowledge and creativity. My journey began 
                 with a simple belief: everyone deserves access to quality education and inspiring content.
               </p>
               <p>
                 Through this platform, I share my knowledge, experiences, and stories with learners 
-                from all walks of life. Whether it's through in-depth courses, engaging workshops, 
+                from all walks of life. Whether it&apos;s through in-depth courses, engaging workshops, 
                 thought-provoking blog posts, or creative stories, my goal is to inspire, educate, 
                 and empower individuals to reach their full potential.
               </p>
               <p>
-                I believe that learning should be accessible, engaging, and meaningful. That's why 
-                I've created this comprehensive platform that offers various ways to learn and grow, 
+                I believe that learning should be accessible, engaging, and meaningful. That&apos;s why 
+                I&apos;ve created this comprehensive platform that offers various ways to learn and grow, 
                 from traditional educational content to creative storytelling and interactive experiences.
               </p>
             </CardContent>
@@ -125,7 +125,7 @@ export default function About() {
                 <li>Provide high-quality educational content that makes complex topics understandable</li>
                 <li>Tell stories that inspire, entertain, and teach valuable life lessons</li>
                 <li>Offer interactive learning experiences through courses and workshops</li>
-                <li>Build a community of lifelong learners who support each other's growth</li>
+                <li>Build a community of lifelong learners who support each other&apos;s growth</li>
                 <li>Make education affordable and accessible to everyone, regardless of background</li>
               </ul>
             </CardContent>

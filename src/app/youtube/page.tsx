@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Play, Eye, ThumbsUp, Clock, Calendar, ExternalLink, Youtube } from "lucide-react"
+import { Play, Eye, ThumbsUp, Calendar, ExternalLink, Youtube } from "lucide-react"
 
 // Mock data - In real app, this would come from YouTube API via Supabase
 const videos = [
@@ -124,9 +124,6 @@ const playlists = [
 
 const categories = ["All", "Web Development", "React", "JavaScript", "CSS", "Database", "Communication", "Content Creation"]
 
-const formatDuration = (duration: string) => {
-  return duration
-}
 
 const formatViews = (views: number) => {
   if (views >= 1000000) {
@@ -400,7 +397,7 @@ export default function YouTube() {
       {/* Call to Action */}
       <section className="text-center bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          Don't Miss New Videos!
+          Don&apos;t Miss New Videos!
         </h2>
         <p className="text-gray-600 mb-6">
           Subscribe to my YouTube channel and get notified when I upload new tutorials and educational content.
