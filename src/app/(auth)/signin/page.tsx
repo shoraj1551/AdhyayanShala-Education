@@ -17,7 +17,6 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,6 +24,7 @@ export default function SignIn() {
     setError("")
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -45,15 +45,21 @@ export default function SignIn() {
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    
-    if (error) {
-      setError(error.message)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      
+      if (error) {
+        setError(error.message)
+      }
+    } catch {
+      setError("An unexpected error occurred")
+    } finally {
       setLoading(false)
     }
   }

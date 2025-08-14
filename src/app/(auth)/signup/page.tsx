@@ -21,7 +21,6 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
-  const supabase = createClient()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -49,6 +48,7 @@ export default function SignUp() {
     }
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -73,15 +73,21 @@ export default function SignUp() {
 
   const handleGoogleSignUp = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    
-    if (error) {
-      setError(error.message)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        setError(error.message)
+      }
+    } catch {
+      setError("An unexpected error occurred")
+    } finally {
       setLoading(false)
     }
   }
