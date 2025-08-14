@@ -1,33 +1,82 @@
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="text-center space-y-6 max-w-md mx-auto">
-        <div className="space-y-2">
-          <h1 className="text-6xl font-bold text-gray-900 dark:text-gray-100">404</h1>
-          <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300">
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      padding: '1rem',
+      fontFamily: 'system-ui, sans-serif'
+    }}>
+      <div style={{ textAlign: 'center', maxWidth: '28rem', margin: '0 auto' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h1 style={{ 
+            fontSize: '3.75rem', 
+            fontWeight: 'bold', 
+            color: '#111827',
+            margin: '0 0 0.5rem 0'
+          }}>404</h1>
+          <h2 style={{ 
+            fontSize: '1.5rem', 
+            fontWeight: '600', 
+            color: '#374151',
+            margin: '0'
+          }}>
             Page Not Found
           </h2>
         </div>
         
-        <p className="text-gray-600 dark:text-gray-400 text-lg">
+        <p style={{ 
+          color: '#6B7280', 
+          fontSize: '1.125rem',
+          marginBottom: '1.5rem'
+        }}>
           Sorry, the page you are looking for doesn't exist or has been moved.
         </p>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button asChild>
-            <Link href="/">
-              Go Home
-            </Link>
-          </Button>
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '1rem',
+          alignItems: 'center'
+        }}>
+          <Link 
+            href="/"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.5rem 1rem',
+              backgroundColor: '#111827',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '0.375rem',
+              fontWeight: '500',
+              transition: 'all 0.2s'
+            }}
+          >
+            Go Home
+          </Link>
           
-          <Button variant="outline" asChild>
-            <Link href="/blog">
-              Browse Blog
-            </Link>
-          </Button>
+          <Link 
+            href="/blog"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.5rem 1rem',
+              border: '1px solid #D1D5DB',
+              color: '#374151',
+              textDecoration: 'none',
+              borderRadius: '0.375rem',
+              fontWeight: '500',
+              transition: 'all 0.2s'
+            }}
+          >
+            Browse Blog
+          </Link>
         </div>
       </div>
     </div>
