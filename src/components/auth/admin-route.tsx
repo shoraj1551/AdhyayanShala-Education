@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,39 +13,39 @@ interface AdminRouteProps {
   redirectTo?: string
 }
 
-// For now, we'll use a simple email-based admin check
-// In production, you'd want a proper role-based system
-const ADMIN_EMAILS = [
-  'shoraj@shorajtomer.me',
-  'admin@shorajtomer.me',
-  // Add your admin email here
-]
-
-export default function AdminRoute({ 
-  children, 
+export default function AdminRoute({
+  children,
   redirectTo = '/dashboard'
 }: AdminRouteProps) {
-  const { user, loading } = useAuth()
+  const { user, profile, loading } = useAuth()
   const router = useRouter()
+  const [checking, setChecking] = useState(true)
 
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email || '')
+  // Check if user is admin based on profile role
+  const isAdmin = profile?.role === 'admin'
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/signin?redirect=/admin')
-    } else if (!loading && user && !isAdmin) {
-      router.push(redirectTo)
+    if (!loading) {
+      if (!user) {
+        router.push('/signin?redirect=/admin')
+      } else if (!isAdmin && profile) {
+        // Profile loaded but user is not admin
+        router.push(redirectTo)
+      } else if (profile) {
+        // Profile loaded and user is admin
+        setChecking(false)
+      }
     }
-  }, [user, loading, router, redirectTo, isAdmin])
+  }, [user, profile, loading, router, redirectTo, isAdmin])
 
-  if (loading) {
+  if (loading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex items-center justify-center space-x-2">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <span className="text-lg">Loading...</span>
+              <span className="text-lg">Verifying permissions...</span>
             </div>
           </CardContent>
         </Card>
@@ -90,6 +90,7 @@ export default function AdminRoute({
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>
               You don&apos;t have permission to access the admin panel.
+              Only administrators can access this area.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

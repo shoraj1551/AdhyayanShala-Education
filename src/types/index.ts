@@ -6,6 +6,7 @@ export interface User {
   bio?: string
   website?: string
   social_links?: Record<string, string>
+  role?: 'user' | 'instructor' | 'admin'
   created_at: string
   updated_at: string
 }
