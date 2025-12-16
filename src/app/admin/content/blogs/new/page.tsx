@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { RichTextEditor } from "@/components/editor/rich-text-editor"
 import AdminRoute from "@/components/auth/admin-route"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -35,13 +36,13 @@ export default function NewBlogPage() {
     featuredImage: ''
   })
   const [currentTag, setCurrentTag] = useState('')
-  
+
   const router = useRouter()
   const supabase = createClient()
   const { user } = useAuth()
 
   const categories = [
-    "Education", "Technology", "Storytelling", "Workshops", 
+    "Education", "Technology", "Storytelling", "Workshops",
     "Programming", "Personal Development", "Business"
   ]
 
@@ -51,7 +52,7 @@ export default function NewBlogPage() {
       ...prev,
       [name]: value
     }))
-    
+
     // Auto-generate slug from title
     if (name === 'title') {
       const slug = value
@@ -134,7 +135,7 @@ export default function NewBlogPage() {
 
   const handleSaveDraft = async () => {
     const fakeEvent = {
-      preventDefault: () => {},
+      preventDefault: () => { },
     } as React.FormEvent
     await handleSubmit(fakeEvent)
   }
@@ -150,9 +151,8 @@ export default function NewBlogPage() {
         </div>
 
         {message && (
-          <div className={`flex items-center gap-2 p-4 rounded-md mb-6 ${
-            message.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-          }`}>
+          <div className={`flex items-center gap-2 p-4 rounded-md mb-6 ${message.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+            }`}>
             {message.type === 'success' ? (
               <CheckCircle className="h-4 w-4" />
             ) : (
@@ -215,19 +215,11 @@ export default function NewBlogPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="content">Content *</Label>
-                    <Textarea
-                      id="content"
-                      name="content"
-                      value={formData.content}
-                      onChange={handleInputChange}
+                    <RichTextEditor
+                      content={formData.content}
+                      onChange={(content) => setFormData(prev => ({ ...prev, content }))}
                       placeholder="Write your blog post content here..."
-                      rows={15}
-                      className="font-mono"
-                      required
                     />
-                    <p className="text-xs text-gray-500">
-                      Supports Markdown formatting
-                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -337,10 +329,10 @@ export default function NewBlogPage() {
                     <Save className="h-4 w-4 mr-2" />
                     {loading ? 'Saving...' : formData.published ? 'Publish' : 'Save Draft'}
                   </Button>
-                  
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+
+                  <Button
+                    type="button"
+                    variant="outline"
                     className="w-full"
                     onClick={() => window.open(`/blog/${formData.slug}`, '_blank')}
                     disabled={!formData.slug}
@@ -348,10 +340,10 @@ export default function NewBlogPage() {
                     <Eye className="h-4 w-4 mr-2" />
                     Preview
                   </Button>
-                  
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
+
+                  <Button
+                    type="button"
+                    variant="ghost"
                     className="w-full"
                     onClick={() => router.back()}
                   >
