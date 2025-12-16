@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         const testService = new TestService(supabase)
 
         const test = await testService.create({
-            ...body,
+            ...(body as any),
             author_id: user.id,
             attempts_count: 0,
         })

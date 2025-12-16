@@ -44,7 +44,7 @@ export async function PUT(
 
         const body = await validateRequest(request, updateStorySchema)
 
-        const story = await storyService.update(id, body)
+        const story = await storyService.update(id, body as any)
 
         return NextResponse.json({ story })
     } catch (error) {

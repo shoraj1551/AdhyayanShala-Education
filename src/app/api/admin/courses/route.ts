@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CourseService } from '@/services/course.service'
 import { requireInstructorOrAdmin } from '@/lib/auth/roles'
 import { handleApiError, validateRequest } from '@/lib/errors'
-import { createCourseSchema } from '@/lib/validations/course.schema'
+import { createCourseSchema, CreateCourseInput } from '@/lib/validations/course.schema'
 
 /**
  * GET /api/admin/courses
@@ -48,11 +48,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const body = await validateRequest(request, createCourseSchema)
+        const body = await validateRequest<CreateCourseInput>(request, createCourseSchema)
         const courseService = new CourseService(supabase)
 
         const course = await courseService.create({
-            ...body,
+            ...(body as any),
             instructor_id: user.id,
         })
 

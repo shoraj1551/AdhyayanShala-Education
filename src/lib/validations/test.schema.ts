@@ -7,7 +7,7 @@ export const createTestSchema = z.object({
     title: z.string().min(1, 'Title is required').max(200),
     description: z.string().optional(),
     category_id: z.string().uuid().optional().nullable(),
-    questions: z.array(z.record(z.unknown())).min(1, 'At least one question is required'),
+    questions: z.array(z.record(z.string(), z.unknown())).min(1, 'At least one question is required'),
     price: z.number().min(0).max(999999.99),
     duration_minutes: z.number().int().min(1, 'Duration must be at least 1 minute').max(480),
     passing_score: z.number().int().min(0).max(100).default(70),
@@ -25,7 +25,7 @@ export const updateTestSchema = createTestSchema.partial()
  */
 export const submitTestSchema = z.object({
     test_id: z.string().uuid(),
-    answers: z.record(z.unknown()),
+    answers: z.record(z.string(), z.unknown()),
     time_taken_minutes: z.number().int().min(1).optional(),
 })
 

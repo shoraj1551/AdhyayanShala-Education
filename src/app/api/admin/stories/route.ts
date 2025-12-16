@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         const storyService = new StoryService(supabase)
 
         const story = await storyService.create({
-            ...body,
+            ...(body as any),
             author_id: user.id,
             views_count: 0,
             likes_count: 0,

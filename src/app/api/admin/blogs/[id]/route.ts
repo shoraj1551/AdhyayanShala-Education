@@ -52,7 +52,7 @@ export async function PUT(
             throw new AppError(403, 'You do not have permission to edit this blog')
         }
 
-        const body = await validateRequest(request, updateBlogSchema)
+        const body = await validateRequest(request, updateBlogSchema) as any
 
         // If title changed, regenerate slug
         let slug = body.slug
@@ -61,7 +61,7 @@ export async function PUT(
         }
 
         const blog = await blogService.update(id, {
-            ...body,
+            ...(body as any),
             slug,
             published_at: body.published && !existingBlog.published
                 ? new Date().toISOString()

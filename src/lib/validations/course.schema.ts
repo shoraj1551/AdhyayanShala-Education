@@ -12,7 +12,7 @@ export const createCourseSchema = z.object({
     level: z.enum(['beginner', 'intermediate', 'advanced']),
     thumbnail_url: z.string().url().optional().or(z.literal('')),
     preview_video_url: z.string().url().optional().or(z.literal('')),
-    modules: z.array(z.record(z.unknown())).default([]),
+    modules: z.array(z.record(z.string(), z.unknown())).default([]),
     requirements: z.array(z.string()).max(20).default([]),
     what_you_learn: z.array(z.string()).max(20).default([]),
     is_published: z.boolean().default(false),

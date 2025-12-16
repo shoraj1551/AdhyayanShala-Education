@@ -19,7 +19,7 @@ export class AppError extends Error {
  * Handle validation errors from Zod
  */
 export function handleValidationError(error: ZodError) {
-    const errors = error.errors.map((err) => ({
+    const errors = error.issues.map((err) => ({
         field: err.path.join('.'),
         message: err.message,
     }))

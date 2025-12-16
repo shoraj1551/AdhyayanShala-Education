@@ -50,7 +50,7 @@ export async function PUT(
 
         const body = await validateRequest(request, updateWorkshopSchema)
 
-        const workshop = await workshopService.update(id, body)
+        const workshop = await workshopService.update(id, body as any)
 
         return NextResponse.json({ workshop })
     } catch (error) {

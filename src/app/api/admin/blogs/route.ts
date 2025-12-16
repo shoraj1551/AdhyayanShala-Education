@@ -50,16 +50,21 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const body = await validateRequest(request, createBlogSchema)
+        const body = await validateRequest(request, createBlogSchema) as any
         const blogService = new BlogService(supabase)
 
-        // Generate slug if not provided or ensure uniqueness
-        const slug = body.slug || await blogService.generateSlug(body.title)
+        // Generate unique slug
+        let slug = body.slug
+        if (!slug) {
+            slug = await blogService.generateSlug(body.title)
+        }
 
         const blog = await blogService.create({
-            ...body,
+            ...(body as any),
             slug,
             author_id: user.id,
+            views_count: 0,
+            likes_count: 0,
             published_at: body.published ? new Date().toISOString() : null,
         })
 

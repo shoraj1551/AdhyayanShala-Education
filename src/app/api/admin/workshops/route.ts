@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         const workshopService = new WorkshopService(supabase)
 
         const workshop = await workshopService.create({
-            ...body,
+            ...(body as any),
             instructor_id: user.id,
             enrolled_count: 0,
         })
