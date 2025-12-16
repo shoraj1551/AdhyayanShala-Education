@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
             .limit(10)
 
         // Revenue by item type
-        const revenueByType = enrollments?.reduce((acc, e) => {
+        const revenueByType = enrollments?.reduce((acc, e: any) => {
             const type = e.item_type || 'unknown'
             acc[type] = (acc[type] || 0) + (e.amount_paid || 0)
             return acc

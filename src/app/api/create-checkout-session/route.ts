@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate request body
-    const body = await validateRequest(request, createCheckoutSessionSchema)
+    const body = await validateRequest(request, createCheckoutSessionSchema) as any
+
     const { items, metadata } = body
 
     // Verify prices against database
