@@ -1,0 +1,112 @@
+// apps/backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+  INSTRUCTOR
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String   // Hashed
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  enrollments Enrollment[]
+  attempts    Attempt[]
+  courses     Course[]  @relation("InstructorCourses")
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  price       Float    @default(0)
+  isPublished Boolean  @default(false)
+  instructorId String?
+  instructor   User?   @relation("InstructorCourses", fields: [instructorId], references: [id])
+  
+  modules     Module[]
+  tests       Test[]
+  enrollments Enrollment[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Module {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  lessons   Lesson[]
+}
+
+model Lesson {
+  id        String   @id @default(uuid())
+  title     String
+  content   String?  // Text content or video URL
+  type      String   // VIDEO, TEXT
+  moduleId  String
+  module    Module   @relation(fields: [moduleId], references: [id])
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  enrolledAt DateTime @default(now())
+}
+
+model Test {
+  id        String   @id @default(uuid())
+  title     String
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  questions Question[]
+  attempts  Attempt[]
+}
+
+model Question {
+  id        String   @id @default(uuid())
+  text      String
+  testId    String
+  test      Test     @relation(fields: [testId], references: [id])
+  options   Option[]
+  points    Int      @default(1)
+}
+
+model Option {
+  id         String   @id @default(uuid())
+  text       String
+  isCorrect  Boolean
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+}
+
+model Attempt {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  testId    String
+  test      Test     @relation(fields: [testId], references: [id])
+  score     Int
+  passed    Boolean  @default(false)
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+}
