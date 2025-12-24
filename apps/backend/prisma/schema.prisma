@@ -5,14 +5,26 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 enum Role {
   STUDENT
   ADMIN
   INSTRUCTOR
+}
+
+enum QuestionType {
+  MCQ
+  NUMERICAL
+  TEXT // Future use
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
 }
 
 model User {
@@ -24,23 +36,35 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  enrollments Enrollment[]
-  attempts    Attempt[]
-  courses     Course[]  @relation("InstructorCourses")
+  enrollments      Enrollment[]
+  attempts         Attempt[]
+  completedLessons LessonProgress[]
+  courses          Course[]  @relation("InstructorCourses")
 }
 
-model Course {
+model LearningPath {
   id          String   @id @default(uuid())
   title       String
   description String?
-  price       Float    @default(0)
-  isPublished Boolean  @default(false)
-  instructorId String?
-  instructor   User?   @relation("InstructorCourses", fields: [instructorId], references: [id])
+  courses     Course[] @relation("PathCourses")
+  createdAt   DateTime @default(now())
+}
+
+model Course {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  level         CourseLevel @default(BEGINNER)
+  prerequisites String?  // JSON or text list of prereqs
+  price         Float    @default(0)
+  isPublished   Boolean  @default(false)
+  instructorId  String?
+  instructor    User?    @relation("InstructorCourses", fields: [instructorId], references: [id])
   
-  modules     Module[]
-  tests       Test[]
-  enrollments Enrollment[]
+  modules       Module[]
+  tests         Test[]
+  enrollments   Enrollment[]
+  learningPaths LearningPath[] @relation("PathCourses")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -60,8 +84,21 @@ model Lesson {
   title     String
   content   String?  // Text content or video URL
   type      String   // VIDEO, TEXT
+  duration  Int?     // In minutes
   moduleId  String
   module    Module   @relation(fields: [moduleId], references: [id])
+  progress  LessonProgress[]
+}
+
+model LessonProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  completedAt DateTime @default(now())
+
+  @@unique([userId, lessonId])
 }
 
 model Enrollment {
@@ -83,12 +120,14 @@ model Test {
 }
 
 model Question {
-  id        String   @id @default(uuid())
-  text      String
-  testId    String
-  test      Test     @relation(fields: [testId], references: [id])
-  options   Option[]
-  points    Int      @default(1)
+  id          String       @id @default(uuid())
+  text        String
+  type        QuestionType @default(MCQ)
+  explanation String?      // For "Why did this work?" reflection
+  testId      String
+  test        Test         @relation(fields: [testId], references: [id])
+  options     Option[]
+  points      Int          @default(1)
 }
 
 model Option {

@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
 :root {
+  /* Neutral Palette - Calm & Serious */
   --background: #ffffff;
   --foreground: #171717;
+  /* Zinc-900 */
+
+  --muted: #f5f5f5;
+  /* Zinc-100 */
+  --muted-foreground: #737373;
+  /* Zinc-500 */
+
+  --border: #e5e5e5;
+  /* Zinc-200 */
+
+  --accent: #2563eb;
+  /* Blue-600 - Only for links/CTAs */
+  --accent-foreground: #ffffff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    /* Zinc-950 */
+    --foreground: #fafafa;
+    /* Zinc-50 */
+
+    --muted: #27272a;
+    /* Zinc-800 */
+    --muted-foreground: #a1a1aa;
+    /* Zinc-400 */
+
+    --border: #27272a;
+    /* Zinc-800 */
+
+    --accent: #3b82f6;
+    /* Blue-500 */
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+/* Typography Utilities */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.025em;
+  /* Tight tracking for headings */
+}
+
+a {
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+/* Utility classes for layout */
+.container-narrow {
+  max-width: 65ch;
+  /* Optimal reading width */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.section-spacing {
+  padding-top: 6rem;
+  padding-bottom: 6rem;
 }
