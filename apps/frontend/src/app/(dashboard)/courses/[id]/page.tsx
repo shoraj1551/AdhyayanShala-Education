@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { PlayCircle, FileText, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface Lesson {
     id: string;
@@ -35,24 +37,88 @@ export default function CoursePlayerPage() {
     const [course, setCourse] = useState<CourseContent | null>(null);
     const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isEnrolled, setIsEnrolled] = useState(false);
+    const [enrollmentLoading, setEnrollmentLoading] = useState(true);
+    const { user } = useAuth(); // Need user role
 
     useEffect(() => {
         if (token && params.id) {
+            // Fetch Course
             api.get(`/courses/${params.id}`, token)
                 .then(data => {
                     setCourse(data);
-                    // Select first lesson by default
-                    if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
+                    if (data.modules?.length > 0 && data.modules[0].lessons?.length > 0) {
                         setSelectedLesson(data.modules[0].lessons[0]);
                     }
                 })
                 .catch(err => console.error(err))
                 .finally(() => setLoading(false));
+
+            // Fetch Enrollment Status
+            api.get(`/courses/${params.id}/status`, token)
+                .then(data => setIsEnrolled(data.isEnrolled))
+                .catch(err => {
+                    console.error("Enrollment check failed", err);
+                    // If error (e.g. 401), assume false
+                    setIsEnrolled(false);
+                })
+                .finally(() => setEnrollmentLoading(false));
         }
     }, [token, params.id]);
 
-    if (loading) return <div className="p-8">Loading course content...</div>;
+    const handleEnroll = async () => {
+        if (!token) return;
+        try {
+            await api.post(`/courses/${params.id}/enroll`, {}, token);
+            setIsEnrolled(true);
+            alert("Enrolled successfully!");
+        } catch (error) {
+            alert("Failed to enroll.");
+        }
+    }
+
+    if (loading || enrollmentLoading) return <div className="p-8">Loading course content...</div>;
     if (!course) return <div className="p-8">Course not found.</div>;
+
+    // Admin/Instructor bypass
+    const canAccess = isEnrolled || user?.role === 'ADMIN' || user?.role === 'INSTRUCTOR';
+
+    if (!canAccess) {
+        return (
+            <div className="container mx-auto p-12 max-w-4xl text-center space-y-8">
+                <div className="space-y-4">
+                    <h1 className="text-4xl font-bold">{course.title}</h1>
+                    <p className="text-xl text-muted-foreground">{course.modules.length} Modules • {course.tests.length} Assessments</p>
+                </div>
+
+                <Card className="p-8 bg-muted/20 border-2 border-primary/20">
+                    <CardContent className="space-y-6">
+                        <div className="text-center">
+                            <p className="text-2xl font-bold mb-4">Join this course today</p>
+                            <Button size="lg" className="w-full md:w-1/2 text-lg h-14" onClick={handleEnroll}>
+                                Enroll Now
+                            </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Get full access to all video lessons, reading materials, and quizzes.
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <div className="text-left max-w-2xl mx-auto">
+                    <h3 className="font-bold text-lg mb-2">What you'll learn:</h3>
+                    <ul className="grid grid-cols-1 gap-2">
+                        {course.modules.map((m, i) => (
+                            <li key={m.id} className="flex items-center gap-2 p-3 bg-card border rounded">
+                                <span className="bg-primary/10 text-primary w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                                {m.title}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-[calc(100vh-4rem)] flex-col md:flex-row">

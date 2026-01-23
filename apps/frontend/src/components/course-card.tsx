@@ -65,40 +65,46 @@ export function CourseCard({ course }: CourseCardProps) {
     };
 
     return (
-        <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
+
+        <Card className="flex flex-col h-full group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary/50 bg-card/50 backdrop-blur-sm overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground hover:bg-primary/80">
+                    <CardTitle className="line-clamp-2 text-xl font-bold group-hover:text-primary transition-colors">{course.title}</CardTitle>
+                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold shadow-sm bg-primary/10 text-primary border-primary/20">
                         {course.level}
                     </span>
                 </div>
-                <CardDescription className="line-clamp-2">
-                    {course.description}
+                <CardDescription className="line-clamp-2 pt-2">
+                    {course.description || "Unlock your potential with this comprehensive course designed for master learners."}
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
-                <div className="flex items-center text-sm text-muted-foreground gap-4">
-                    <div className="flex items-center gap-1">
+                <div className="flex items-center text-sm font-medium text-muted-foreground gap-4">
+                    <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded">
                         <BookOpen className="h-4 w-4" />
                         <span>{course._count?.modules || 0} Modules</span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded">
                         <Clock className="h-4 w-4" />
                         <span>Self-paced</span>
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="pt-4 border-t">
+            <CardFooter className="pt-4 border-t bg-muted/20">
                 {isEnrolled ? (
                     <Link href={`/courses/${course.id}`} className="w-full">
-                        <Button className="w-full" variant="secondary">
+                        <Button className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg shadow-emerald-500/20 border-none">
                             <CheckCircle className="mr-2 h-4 w-4" />
                             Continue Learning
                         </Button>
                     </Link>
                 ) : (
-                    <Button className="w-full" onClick={handleEnroll} disabled={loading}>
+                    <Button
+                        className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all text-white font-semibold"
+                        onClick={handleEnroll}
+                        disabled={loading}
+                    >
                         {loading ? "Enrolling..." : (course.price > 0 ? `Enroll ($${course.price})` : "Enroll for Free")}
                     </Button>
                 )}

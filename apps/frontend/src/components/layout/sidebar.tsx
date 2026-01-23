@@ -45,6 +45,11 @@ const sidebarItems = [
         href: "/admin/tests",
         icon: Settings,
     },
+    {
+        title: "Create Course",
+        href: "/instructor/create",
+        icon: BookOpen,
+    },
 ];
 
 export function Sidebar() {
@@ -64,8 +69,18 @@ export function Sidebar() {
                     {sidebarItems.map((item, index) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;
-                        if (item.title.startsWith("Admin") && user?.role !== 'ADMIN') {
-                            return null;
+
+                        // Guest Logic
+                        if (!user) {
+                            if (item.title !== "Browse Courses") return null;
+                        } else {
+                            // Auth Logic
+                            if (item.title.startsWith("Admin") && user.role !== 'ADMIN') {
+                                return null;
+                            }
+                            if (item.title === "Create Course" && user.role === 'STUDENT') {
+                                return null;
+                            }
                         }
 
                         return (
@@ -85,13 +100,23 @@ export function Sidebar() {
                 </nav>
             </div>
             <div className="border-t p-4">
-                <button
-                    onClick={logout}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                </button>
+                {user ? (
+                    <button
+                        onClick={logout}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Sign Out
+                    </button>
+                ) : (
+                    <Link
+                        href="/login"
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                    >
+                        <LogOut className="h-4 w-4 rotate-180" />
+                        Sign In
+                    </Link>
+                )}
             </div>
         </div>
     );

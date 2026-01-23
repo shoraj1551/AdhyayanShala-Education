@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,13 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, GraduationCap, LayoutDashboard } from "lucide-react";
 
-export default function RegisterPage() {
+function RegisterForm() {
+    const searchParams = useSearchParams();
+    const roleParam = searchParams.get("role");
+    const role = (roleParam === "instructor") ? "instructor" : "student"; // Default to student, strict check
+
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
@@ -30,7 +35,7 @@ export default function RegisterPage() {
         setError("");
         setIsLoading(true);
         try {
-            const res = await api.post("/auth/register", { email, password, name });
+            const res = await api.post("/auth/register", { email, password, name, role });
             login(res.token, res.user);
         } catch (err: any) {
             setError(err.message || "Registration failed");
@@ -42,9 +47,22 @@ export default function RegisterPage() {
     return (
         <Card className="w-full shadow-lg">
             <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl text-center font-bold">Create an account</CardTitle>
+                <div className="flex justify-center mb-2">
+                    {role === 'instructor' ? (
+                        <div className="bg-emerald-500/10 p-3 rounded-full text-emerald-500">
+                            <LayoutDashboard className="w-8 h-8" />
+                        </div>
+                    ) : (
+                        <div className="bg-blue-500/10 p-3 rounded-full text-blue-500">
+                            <GraduationCap className="w-8 h-8" />
+                        </div>
+                    )}
+                </div>
+                <CardTitle className="text-2xl text-center font-bold">
+                    Create {role === 'instructor' ? 'Instructor' : 'Student'} Account
+                </CardTitle>
                 <CardDescription className="text-center">
-                    Enter your details below to create your account
+                    Enter your details below to join as a {role}
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
@@ -97,11 +115,19 @@ export default function RegisterPage() {
             <CardFooter className="flex flex-col gap-2">
                 <div className="text-sm text-center text-muted-foreground">
                     Already have an account?{" "}
-                    <Link href="/login" className="text-primary hover:underline font-medium">
+                    <Link href={`/login?role=${role}`} className="text-primary hover:underline font-medium">
                         Sign in
                     </Link>
                 </div>
             </CardFooter>
         </Card>
+    );
+}
+
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center p-8">Loading...</div>}>
+            <RegisterForm />
+        </Suspense>
     );
 }

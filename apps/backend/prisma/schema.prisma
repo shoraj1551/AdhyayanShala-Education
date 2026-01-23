@@ -13,6 +13,7 @@ enum Role {
   STUDENT
   ADMIN
   INSTRUCTOR
+  GUEST
 }
 
 enum QuestionType {
@@ -86,6 +87,7 @@ model Lesson {
   content   String?  // Text content or video URL
   type      String   // VIDEO, TEXT
   duration  Int?     // In minutes
+  order     Int      @default(0)
   moduleId  String
   module    Module   @relation(fields: [moduleId], references: [id])
   progress  LessonProgress[]
@@ -128,6 +130,7 @@ model Question {
   text        String
   type        QuestionType @default(MCQ)
   explanation String?      // For "Why did this work?" reflection
+  imageUrl    String?      // URL for question image
   testId      String
   test        Test         @relation(fields: [testId], references: [id])
   options     Option[]
@@ -137,6 +140,7 @@ model Question {
 model Option {
   id         String   @id @default(uuid())
   text       String
+  imageUrl   String?  // URL for option image
   isCorrect  Boolean
   questionId String
   question   Question @relation(fields: [questionId], references: [id])

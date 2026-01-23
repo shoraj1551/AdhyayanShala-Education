@@ -7,20 +7,34 @@ import { BookOpen, Trophy, Clock, Target, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-export default function Dashboard() {
-    const { user, isLoading } = useAuth();
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 
-    if (isLoading) {
+export default function Dashboard() {
+    const { user, token, isLoading: authLoading } = useAuth();
+    const [stats, setStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (token) {
+            api.get('/student/stats', token)
+                .then(setStats)
+                .catch(err => console.error(err))
+                .finally(() => setLoading(false));
+        }
+    }, [token]);
+
+    if (authLoading || loading) {
         return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading dashboard...</div>;
     }
 
     if (!user) return null;
 
-    const stats = [
-        { title: "Enrolled Courses", value: "3", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
-        { title: "Hours Learned", value: "12.5", icon: Clock, color: "text-orange-500", bg: "bg-orange-500/10" },
-        { title: "Average Score", value: "85%", icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10" },
-        { title: "Goals Met", value: "4/5", icon: Target, color: "text-green-500", bg: "bg-green-500/10" },
+    const statsCards = [
+        { title: "Enrolled Courses", value: stats?.enrolledCourses || 0, icon: BookOpen, color: "text-blue-500", bg: "bg-blue-500/10" },
+        { title: "Lessons Completed", value: stats?.completedLessons || 0, icon: Clock, color: "text-orange-500", bg: "bg-orange-500/10" },
+        { title: "Average Score", value: `${stats?.averageScore || 0}%`, icon: Trophy, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+        { title: "Goals Met", value: "On Track", icon: Target, color: "text-green-500", bg: "bg-green-500/10" },
     ];
 
     return (
@@ -34,14 +48,15 @@ export default function Dashboard() {
                     <p className="text-muted-foreground mt-1">Here's an overview of your learning progress today.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline">View Reports</Button>
-                    <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">Resume Learning</Button>
+                    <Link href="/courses">
+                        <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">Resume Learning</Button>
+                    </Link>
                 </div>
             </div>
 
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {stats.map((stat, i) => (
+                {statsCards.map((stat, i) => (
                     <Card key={i} className="border-none shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -54,7 +69,7 @@ export default function Dashboard() {
                         <CardContent>
                             <div className="text-2xl font-bold">{stat.value}</div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                +2.5% from last month
+                                Keep up the good work!
                             </p>
                         </CardContent>
                     </Card>
@@ -68,26 +83,28 @@ export default function Dashboard() {
                     <CardHeader>
                         <CardTitle>Recent Activity</CardTitle>
                         <CardDescription>
-                            You have completed 3 lessons this week.
+                            Your latest learning milestones.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-8">
-                            {[1, 2, 3].map((_, i) => (
+                            {stats?.recentActivity?.length > 0 ? stats.recentActivity.map((activity: any, i: number) => (
                                 <div key={i} className="flex items-center">
                                     <div className="ml-4 space-y-1">
                                         <p className="text-sm font-medium leading-none">
-                                            Completed "Intro to Data Science"
+                                            {activity.type === 'TEST' ? 'Completed Assessment' : 'Completed Lesson'}: "{activity.title}"
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            2 hours ago
+                                            {new Date(activity.date).toLocaleDateString()}
                                         </p>
                                     </div>
                                     <div className="ml-auto font-medium text-sm text-green-600">
-                                        +100 XP
+                                        {activity.score ? `Score: ${activity.score}%` : 'Done'}
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-muted-foreground text-sm">No recent activity found. Start a course!</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

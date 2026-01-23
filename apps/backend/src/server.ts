@@ -8,6 +8,7 @@ import progressRoutes from './routes/progress.routes';
 import testRoutes from './routes/test.routes';
 import historyRoutes from './routes/history.routes';
 import authRoutes from './routes/auth.routes';
+import studentRoutes from './routes/student.routes';
 
 dotenv.config();
 
@@ -27,7 +28,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/tests', testRoutes);
+app.use('/api/tests', testRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/student', studentRoutes); // New Route
 
 app.listen(port, () => {
     console.log(`⚡️[server]: Server is running at http://localhost:${port}`);

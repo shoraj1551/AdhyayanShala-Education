@@ -136,3 +136,31 @@ export const submitTest = async (userId: string, testId: string, answers: { ques
         reflections
     };
 };
+
+export const getLeaderboard = async (testId: string) => {
+    // Get top 10 attempts for this test, ordered by score DESC, then time taken (not tracked distinctively yet, using startedAt/completedAt diff would be better but let's stick to score for MVP)
+    // Actually, distinct by user? Usually leaderboards show top score per user.
+    // GroupBy is tricky in Prisma for "top score per user" with includes. 
+    // We will fetch all attempts, sort in JS or simple findMany for now.
+
+    const attempts = await prisma.attempt.findMany({
+        where: { testId },
+        orderBy: { score: 'desc' },
+        take: 20,
+        include: {
+            user: {
+                select: { name: true, avatar: true, email: true }
+            }
+        }
+    });
+
+    // Deduplicate by userId (keep highest score)
+    const uniqueAttempts = new Map();
+    for (const att of attempts) {
+        if (!uniqueAttempts.has(att.userId)) {
+            uniqueAttempts.set(att.userId, att);
+        }
+    }
+
+    return Array.from(uniqueAttempts.values()).slice(0, 10); // Top 10 unique users
+};

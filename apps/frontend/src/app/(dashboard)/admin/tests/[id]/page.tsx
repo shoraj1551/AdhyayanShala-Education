@@ -24,11 +24,12 @@ export default function TestEditorPage() {
     const [newQuestion, setNewQuestion] = useState({
         text: "",
         explanation: "",
+        imageUrl: "", // Added
         points: 5,
         type: "MCQ",
         options: [
-            { text: "", isCorrect: false },
-            { text: "", isCorrect: false },
+            { text: "", imageUrl: "", isCorrect: false }, // Added option image
+            { text: "", imageUrl: "", isCorrect: false },
         ]
     });
 
@@ -60,8 +61,8 @@ export default function TestEditorPage() {
             fetchTest();
             setIsAdding(false);
             setNewQuestion({
-                text: "", explanation: "", points: 5, type: "MCQ",
-                options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }]
+                text: "", explanation: "", imageUrl: "", points: 5, type: "MCQ",
+                options: [{ text: "", imageUrl: "", isCorrect: false }, { text: "", imageUrl: "", isCorrect: false }]
             });
         } catch (error) {
             alert("Failed to add question");
@@ -89,7 +90,7 @@ export default function TestEditorPage() {
     };
 
     const addOptionRow = () => {
-        setNewQuestion({ ...newQuestion, options: [...newQuestion.options, { text: "", isCorrect: false }] })
+        setNewQuestion({ ...newQuestion, options: [...newQuestion.options, { text: "", imageUrl: "", isCorrect: false }] })
     }
 
     if (loading) return <div className="p-8">Loading Editor...</div>;
@@ -119,24 +120,40 @@ export default function TestEditorPage() {
                                 <div>
                                     <Label>Question Text (supports math like $x^2$)</Label>
                                     <Textarea value={newQuestion.text} onChange={e => setNewQuestion({ ...newQuestion, text: e.target.value })} placeholder="e.g. Solve $x^2 + 2x + 1 = 0$" />
+                                    <Input
+                                        className="mt-2"
+                                        value={newQuestion.imageUrl}
+                                        onChange={e => setNewQuestion({ ...newQuestion, imageUrl: e.target.value })}
+                                        placeholder="Question Image URL (optional)"
+                                    />
+                                    {newQuestion.imageUrl && <img src={newQuestion.imageUrl} alt="Preview" className="mt-2 max-h-40 rounded border" />}
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label>Options</Label>
-                                    {newQuestion.options.map((opt, idx) => (
-                                        <div key={idx} className="flex gap-2 items-center">
-                                            <input
-                                                type="radio"
-                                                name="correctOrigin"
-                                                checked={opt.isCorrect}
-                                                onChange={(e) => updateNewOption(idx, 'isCorrect', e.target.checked)}
-                                                className="w-4 h-4"
-                                            />
+                                    {newQuestion.options.map((opt: any, idx) => (
+                                        <div key={idx} className="flex flex-col gap-2 p-3 border rounded bg-muted/20">
+                                            <div className="flex gap-2 items-center">
+                                                <input
+                                                    type="radio"
+                                                    name="correctOrigin"
+                                                    checked={opt.isCorrect}
+                                                    onChange={(e) => updateNewOption(idx, 'isCorrect', e.target.checked)}
+                                                    className="w-4 h-4"
+                                                />
+                                                <Input
+                                                    value={opt.text}
+                                                    onChange={e => updateNewOption(idx, 'text', e.target.value)}
+                                                    placeholder={`Option ${idx + 1}`}
+                                                />
+                                            </div>
                                             <Input
-                                                value={opt.text}
-                                                onChange={e => updateNewOption(idx, 'text', e.target.value)}
-                                                placeholder={`Option ${idx + 1}`}
+                                                className="text-xs h-8"
+                                                value={opt.imageUrl || ""}
+                                                onChange={e => updateNewOption(idx, 'imageUrl', e.target.value)}
+                                                placeholder={`Option ${idx + 1} Image URL`}
                                             />
+                                            {opt.imageUrl && <img src={opt.imageUrl} alt="Opt Preview" className="h-16 w-auto object-contain rounded border" />}
                                         </div>
                                     ))}
                                     <Button type="button" variant="ghost" size="sm" onClick={addOptionRow}>+ Add Option</Button>

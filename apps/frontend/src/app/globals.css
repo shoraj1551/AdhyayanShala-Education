@@ -4,79 +4,76 @@
 
 @layer base {
   :root {
-    /* Premium Indigo/Slate Palette (Light Mode) */
+    /* Premium Light Mode (Clean & Airy) */
     --background: 210 40% 98%;
-    /* Very Light Blue/Gray */
     --foreground: 222 47% 11%;
-    /* Dark Slate */
 
     --card: 0 0% 100%;
-    /* White */
     --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 221 83% 53%;
-    /* Vivid Blue/Indigo */
+    /* Vibrant Indigo Primary */
+    --primary: 240 5.9% 10%;
+    /* Fallback dark for light mode text? No. */
+    --primary: 226 70% 55%;
+    /* Vibrant Royal Blue */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96%;
-    /* Light Blue/Gray for subtle elements */
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 90%;
-    /* Slightly darker than secondary */
+    --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 92%;
-    /* Highlighting */
+    --accent: 210 40% 96%;
     --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --ring: 226 70% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+    /* More rounded modern feel */
   }
 
   .dark {
-    /* Premium Indigo/Slate Palette (Dark Mode) */
-    --background: 222 47% 11%;
-    /* Deep Dark Slate */
+    /* Deep Space Dark Mode (Premium) */
+    --background: 230 35% 7%;
+    /* Deep Void */
     --foreground: 210 40% 98%;
-    /* Almost White */
 
-    --card: 217 33% 17%;
-    /* Dark Card Background */
+    --card: 229 25% 12%;
+    /* Darker Card */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 11%;
+    --popover: 229 25% 12%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217 91% 60%;
-    /* Lighter, Vibrant Blue for Dark Mode */
-    --primary-foreground: 222 47% 11%;
+    /* Electric Violet/Blue Primary */
+    --primary: 250 100% 70%;
+    /* Electric Violet */
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 217 33% 18%;
-    /* Dark Secondary */
+    --secondary: 229 20% 16%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 20%;
+    --muted: 229 20% 16%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 217 33% 22%;
+    --accent: 229 20% 20%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 63% 31%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 224 76% 48%;
+    --border: 229 20% 16%;
+    --input: 229 20% 16%;
+    --ring: 250 100% 70%;
   }
 }
 

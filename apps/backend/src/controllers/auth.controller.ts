@@ -109,6 +109,43 @@ export const login = async (req: Request, res: Response) => {
     }
 };
 
+export const guestLogin = async (req: Request, res: Response) => {
+    try {
+        const suffix = Math.random().toString(36).substring(7);
+        const email = `guest_${Date.now()}_${suffix}@shoraj.com`;
+        const password = Math.random().toString(36).substring(2, 15);
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                name: "Guest User",
+                role: "GUEST",
+            },
+        });
+
+        const token = jwt.sign(
+            { userId: user.id, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.status(201).json({
+            message: 'Guest session created',
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+            },
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating guest session' });
+    }
+};
+
 
 export const getMe = async (req: any, res: Response) => {
     try {

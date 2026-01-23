@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { submitTest } from '@/lib/api';
+import { submitTest, api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { MathRenderer } from "@/components/MathRenderer";
+import { LeaderboardView } from "@/components/LeaderboardView";
 
 export default function TestRunner({ test }: { test: any }) {
     const [answers, setAnswers] = useState<{ [key: string]: string }>({});
@@ -89,6 +91,9 @@ export default function TestRunner({ test }: { test: any }) {
                     </CardFooter>
                 </Card>
 
+                {/* Leaderboard Section */}
+                <LeaderboardView testId={test.id} token={token} currentScore={result.attempt.score} />
+
                 <div className="space-y-6">
                     {test.questions.map((q: any, idx: number) => {
                         const reflection = result.reflections.find((r: any) => r.questionId === q.id);
@@ -99,8 +104,9 @@ export default function TestRunner({ test }: { test: any }) {
                             <Card key={q.id} className={cn("border", isCorrect ? "border-green-200" : "border-red-200")}>
                                 <CardHeader>
                                     <h3 className="font-medium text-lg">
-                                        {idx + 1}. {q.text}
+                                        {idx + 1}. <MathRenderer text={q.text} />
                                     </h3>
+                                    {q.imageUrl && <img src={q.imageUrl} alt="Question" className="mt-2 max-h-60 rounded-md object-contain" />}
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     {q.options.map((opt: any) => {
@@ -116,7 +122,10 @@ export default function TestRunner({ test }: { test: any }) {
                                                         (isSelected && !isActuallyCorrect) ? "bg-red-100 border-red-300 text-red-900" : "opacity-70"
                                                 )}
                                             >
-                                                <span>{opt.text}</span>
+                                                <div className="flex flex-col gap-1 w-full">
+                                                    <span className="flex-1"><MathRenderer text={opt.text} /></span>
+                                                    {opt.imageUrl && <img src={opt.imageUrl} alt="Option" className="max-h-32 w-fit rounded border bg-white" />}
+                                                </div>
                                                 {isActuallyCorrect && <CheckCircle className="h-4 w-4 text-green-600" />}
                                                 {isSelected && !isActuallyCorrect && <XCircle className="h-4 w-4 text-red-600" />}
                                             </div>
@@ -162,8 +171,9 @@ export default function TestRunner({ test }: { test: any }) {
                 <Card key={q.id}>
                     <CardHeader>
                         <CardTitle className="text-lg font-medium">
-                            {idx + 1}. {q.text}
+                            {idx + 1}. <MathRenderer text={q.text} />
                         </CardTitle>
+                        {q.imageUrl && <img src={q.imageUrl} alt="Question" className="mt-2 max-h-60 rounded-md object-contain" />}
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {q.options.map((opt: any) => (
@@ -181,7 +191,10 @@ export default function TestRunner({ test }: { test: any }) {
                                     )}>
                                         {answers[q.id] === opt.id && <div className="h-2 w-2 rounded-full bg-primary-foreground" />}
                                     </div>
-                                    <Label className="cursor-pointer">{opt.text}</Label>
+                                    <div className="flex flex-col gap-1 w-full">
+                                        <Label className="cursor-pointer"><MathRenderer text={opt.text} /></Label>
+                                        {opt.imageUrl && <img src={opt.imageUrl} alt="Option" className="max-h-32 w-fit rounded border bg-white" />}
+                                    </div>
                                 </div>
                             </div>
                         ))}

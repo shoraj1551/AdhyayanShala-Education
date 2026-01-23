@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import * as TestService from '../services/test.service';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export const listTests = async (req: Request, res: Response) => {
     try {
@@ -102,18 +105,44 @@ export const deleteQuestion = async (req: Request, res: Response) => {
 };
 
 
+// Import PrismaClient if not exists (assume added at top)
+const prisma = new PrismaClient(); // This might be duplicate if I add it at top separately. I'll add imports at top first.
+
 export const submitTest = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { answers } = req.body;
         const userId = req.user?.userId;
+        const userRole = req.user?.role;
 
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        // GUEST LIMIT CHECK
+        if (userRole === 'GUEST') {
+            const attemptCount = await prisma.attempt.count({
+                where: { userId }
+            });
+            if (attemptCount >= 1) {
+                return res.status(403).json({
+                    message: 'Guest limit reached. You can only take 1 test as a guest. Please register to continue.'
+                });
+            }
+        }
 
         const result = await TestService.submitTest(userId, id, answers);
         res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error submitting test' });
+    }
+};
+
+export const getLeaderboard = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const leaderboard = await TestService.getLeaderboard(id);
+        res.json(leaderboard);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching leaderboard' });
     }
 };
