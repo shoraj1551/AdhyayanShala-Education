@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import courseRoutes from './routes/course.routes';
 import progressRoutes from './routes/progress.routes';
 import testRoutes from './routes/test.routes';
+import historyRoutes from './routes/history.routes';
+import authRoutes from './routes/auth.routes';
 
 dotenv.config();
 
@@ -21,9 +23,11 @@ app.get('/', (req: Request, res: Response) => {
     res.send('Shoraj Learning Platform API');
 });
 
+app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/tests', testRoutes);
+app.use('/api/history', historyRoutes);
 
 app.listen(port, () => {
     console.log(`⚡️[server]: Server is running at http://localhost:${port}`);

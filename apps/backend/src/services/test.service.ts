@@ -1,23 +1,8 @@
 import prisma from '../lib/prisma';
+import { Test, Question, Option } from '@prisma/client';
 
 export const getTestById = async (testId: string) => {
     return await prisma.test.findUnique({
-        where: { id: testId },
-        include: {
-            questions: {
-                include: {
-                    options: {
-                        select: { id: true, text: true } // Hide isCorrect
-                    }
-                }
-            }
-        }
-    });
-};
-
-export const submitTest = async (userId: string, testId: string, answers: { questionId: string; optionId: string }[]) => {
-    // 1. Fetch full test with correct answers
-    const test = await prisma.test.findUnique({
         where: { id: testId },
         include: {
             questions: {
@@ -27,23 +12,102 @@ export const submitTest = async (userId: string, testId: string, answers: { ques
             }
         }
     });
+};
 
-    if (!test) throw new Error('Test not found');
+export const listTests = async () => {
+    return await prisma.test.findMany({
+        include: {
+            _count: {
+                select: { questions: true }
+            },
+            course: {
+                select: { title: true }
+            }
+        }
+    });
+};
 
-    // 2. Calculate Score
+export const createTest = async (data: any) => {
+    return await prisma.test.create({
+        data
+    });
+};
+
+export const updateTest = async (testId: string, data: any) => {
+    return await prisma.test.update({
+        where: { id: testId },
+        data
+    });
+};
+
+export const createQuestion = async (testId: string, data: any) => {
+    // Expects data to include options
+    const { options, ...questionData } = data;
+    return await prisma.question.create({
+        data: {
+            ...questionData,
+            testId,
+            options: {
+                create: options
+            }
+        },
+        include: { options: true }
+    });
+};
+
+export const updateQuestion = async (questionId: string, data: any) => {
+    const { options, ...questionData } = data;
+
+    // Update basic question info
+    await prisma.question.update({
+        where: { id: questionId },
+        data: questionData
+    });
+
+    // If options are provided, this is complex (update/create/delete).
+    // For MVP/Beta simplicity, we might just delete all and recreate, 
+    // BUT checking for existing IDs is better.
+    // Let's go with: if options provided, replace all options (simplest robust approach for now).
+    if (options) {
+        await prisma.option.deleteMany({ where: { questionId } });
+        await prisma.option.createMany({
+            data: options.map((o: any) => ({ ...o, questionId }))
+        });
+    }
+
+    return await prisma.question.findUnique({
+        where: { id: questionId },
+        include: { options: true }
+    });
+};
+
+export const deleteQuestion = async (questionId: string) => {
+    return await prisma.question.delete({
+        where: { id: questionId }
+    });
+};
+
+export const submitTest = async (userId: string, testId: string, answers: { questionId: string, optionId: string }[]) => {
+    const test = await prisma.test.findUnique({
+        where: { id: testId },
+        include: {
+            questions: {
+                include: { options: true }
+            }
+        }
+    });
+
+    if (!test) throw new Error("Test not found");
+
     let score = 0;
-    let totalPoints = 0;
-    const reflections: any[] = [];
+    const totalPoints = test.questions.reduce((sum, q) => sum + q.points, 0);
+    const reflections = [];
 
-    test.questions.forEach((q) => {
-        totalPoints += q.points;
+    for (const q of test.questions) {
         const userAnswer = answers.find(a => a.questionId === q.id);
-
-        // Find correct option
         const correctOption = q.options.find(o => o.isCorrect);
 
         const isCorrect = userAnswer?.optionId === correctOption?.id;
-
         if (isCorrect) {
             score += q.points;
         }
@@ -51,19 +115,18 @@ export const submitTest = async (userId: string, testId: string, answers: { ques
         reflections.push({
             questionId: q.id,
             isCorrect,
-            explanation: q.explanation,
-            correctOptionId: correctOption?.id
+            correctOptionId: correctOption?.id,
+            explanation: q.explanation
         });
-    });
+    }
 
-    // 3. Save Attempt
     const attempt = await prisma.attempt.create({
         data: {
             userId,
             testId,
             score,
-            passed: score >= (totalPoints * 0.7), // 70% passing
-            completedAt: new Date()
+            passed: score >= (totalPoints * 0.7),
+            completedAt: new Date(),
         }
     });
 

@@ -1,110 +1,98 @@
-import prisma from '../src/lib/prisma';
-import { CourseLevel } from '@prisma/client';
+import { PrismaClient, CourseLevel, Role } from '@prisma/client';
+import bcrypt from 'bcrypt';
+
+const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Seeding database...');
+    console.log('Seeding database...');
 
-    // 1. Create Instructor (Shoraj)
+    // 1. Create Instructor
+    const instructorPassword = await bcrypt.hash('instructor123', 10);
     const instructor = await prisma.user.upsert({
-        where: { email: 'shoraj@shorajtomer.me' },
+        where: { email: 'instructor@shoraj.com' },
         update: {},
         create: {
-            email: 'shoraj@shorajtomer.me',
-            name: 'Shoraj Tomer',
-            password: 'hashed-password-placeholder', // In real app, hash this
-            role: 'INSTRUCTOR'
-        }
+            email: 'instructor@shoraj.com',
+            name: 'Dr. Jane Stats',
+            password: instructorPassword,
+            role: Role.INSTRUCTOR,
+        },
     });
 
-    // 2. Create MVP Flagship Course: Statistics Foundations
+    // 2. Create Course
     const course = await prisma.course.create({
         data: {
             title: 'Statistics Foundations',
-            description: 'Build intuition for distributions, uncertainty, and probability.',
+            description: 'Master the fundamentals of statistics, probability, and data analysis. Perfect for beginners.',
             level: CourseLevel.BEGINNER,
+            price: 0,
             isPublished: true,
             instructorId: instructor.id,
-            price: 0, // Free for MVP
             modules: {
                 create: [
                     {
-                        title: '1. Why Statistics Matters',
+                        title: 'Introduction to Probability',
                         order: 1,
                         lessons: {
                             create: [
-                                {
-                                    title: 'The Philosophy of Uncertainty',
-                                    content: 'Statistics is not about formulas. It is about quantifying what we do not know...',
-                                    type: 'TEXT',
-                                    duration: 10
-                                },
-                                {
-                                    title: 'Parameters vs Statistics',
-                                    content: 'https://www.youtube.com/watch?v=placeholder', // Placeholder video
-                                    type: 'VIDEO',
-                                    duration: 15
-                                }
+                                { title: 'What is Probability?', content: 'Probability is the measure of the likelihood that an event will occur.', type: 'TEXT', duration: 10 },
+                                { title: 'Independent vs Dependent Events', content: 'Events are independent if the occurrence of one does not affect the probability of the other.', type: 'TEXT', duration: 15 }
                             ]
                         }
                     },
                     {
-                        title: '2. Thinking in Distributions',
+                        title: 'Descriptive Statistics',
                         order: 2,
                         lessons: {
                             create: [
-                                {
-                                    title: 'Visualizing Data',
-                                    content: 'Histograms, Box plots, and why averages lie.',
-                                    type: 'TEXT',
-                                    duration: 12
-                                }
-                            ]
-                        }
-                    }
-                ]
-            },
-            tests: {
-                create: [
-                    {
-                        title: 'Concept Check: Uncertainty',
-                        questions: {
-                            create: [
-                                {
-                                    text: 'Why do we calculate variance instead of just average distance?',
-                                    type: 'MCQ',
-                                    points: 5,
-                                    explanation: 'Variance penalizes outliers by squaring the distance. Average distance (MAD) treats all deviations linearly.',
-                                    options: {
-                                        create: [
-                                            { text: 'To make the numbers bigger', isCorrect: false },
-                                            { text: 'To penalize large deviations more heavily', isCorrect: true },
-                                            { text: 'It is easier to calculate manually', isCorrect: false }
-                                        ]
-                                    }
-                                },
-                                {
-                                    text: 'If the mean is 10 and a value is 14, what is the deviation?',
-                                    type: 'MCQ', // Treating as MCQ for simplicity in MVP, could be Numerical
-                                    points: 5,
-                                    explanation: 'Deviation = Value - Mean. 14 - 10 = 4.',
-                                    options: {
-                                        create: [
-                                            { text: '4', isCorrect: true },
-                                            { text: '-4', isCorrect: false },
-                                            { text: '1.4', isCorrect: false }
-                                        ]
-                                    }
-                                }
+                                { title: 'Mean, Median, Mode', content: 'Measures of central tendency.', type: 'TEXT', duration: 12 },
+                                { title: 'Variance and Standard Deviation', content: 'Measures of spread.', type: 'TEXT', duration: 20 }
                             ]
                         }
                     }
                 ]
             }
         }
+    }
     });
 
-    console.log(`✅ Created course: ${course.title} with ID: ${course.id}`);
-}
+console.log(`Created course with ID: ${course.id}`);
+
+// 3. Create a Test for the Course
+await prisma.test.create({
+    data: {
+        title: 'Probability Basics Quiz',
+        courseId: course.id,
+        questions: {
+            create: [
+                {
+                    text: 'What is the probability of flipping a fair coin and getting heads?',
+                    type: 'MCQ',
+                    explanation: 'A fair coin has 2 sides, so 1/2 = 0.5',
+                    options: {
+                        create: [
+                            { text: '0.5', isCorrect: true },
+                            { text: '0.25', isCorrect: false },
+                            { text: '1.0', isCorrect: false }
+                        ]
+                    }
+                },
+                {
+                    text: 'If P(A) = 0.4 and P(B) = 0.3, and they are independent, what is P(A and B)?',
+                    type: 'MCQ',
+                    explanation: 'For independent events, P(A and B) = P(A) * P(B) = 0.4 * 0.3 = 0.12',
+                    options: {
+                        create: [
+                            { text: '0.7', isCorrect: false },
+                            { text: '0.12', isCorrect: true },
+                            { text: '0.1', isCorrect: false }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+});
 
 main()
     .catch((e) => {
