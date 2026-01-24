@@ -40,6 +40,22 @@ export default function Dashboard() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Minimal Header Section */}
+            {user.role === 'GUEST' && (
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 mb-6 flex items-start gap-4 animate-in slide-in-from-top-2">
+                    <div className="p-2 bg-indigo-500/20 rounded-full text-indigo-400">
+                        <ArrowRight className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-indigo-400">You are browsing as a Guest</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Your progress is temporary. Enrolled courses (Max 2) and Test results (Max 1) will be lost if you clear your browser.
+                            <Link href="/register" className="text-indigo-400 hover:text-indigo-300 ml-1 font-medium underline underline-offset-4">
+                                Create an account to save progress.
+                            </Link>
+                        </p>
+                    </div>
+                </div>
+            )}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">

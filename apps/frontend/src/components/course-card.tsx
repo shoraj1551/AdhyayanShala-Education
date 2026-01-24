@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
     Card,
     CardContent,
@@ -56,9 +57,26 @@ export function CourseCard({ course }: CourseCardProps) {
         try {
             await api.post(`/courses/${course.id}/enroll`, {}, token);
             setIsEnrolled(true);
+            toast.success("Enrolled successfully! Redirecting...");
             router.refresh();
-        } catch (error) {
+            // Optional: Redirect to course immediately
+            // router.push(`/courses/${course.id}`);
+        } catch (error: any) {
             console.error("Enrollment failed", error);
+            if (error.status === 403 || error.message?.includes("limit")) {
+                toast.error("Guest Limit Reached", {
+                    description: "You can only enroll in 2 courses as a guest. Please create an account to unlock unlimited access.",
+                    duration: 5000,
+                    action: {
+                        label: "Register",
+                        onClick: () => router.push("/register")
+                    }
+                });
+            } else {
+                toast.error("Enrollment failed", {
+                    description: error.message || "Something went wrong. Please try again."
+                });
+            }
         } finally {
             setLoading(false);
         }
