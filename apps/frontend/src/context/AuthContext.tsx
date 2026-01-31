@@ -16,7 +16,7 @@ interface AuthContextType {
     user: User | null;
     token: string | null;
     login: (token: string, user: User) => void;
-    logout: () => void;
+    logout: (shouldRedirect?: boolean) => void;
     updateUser: (user: User) => void;
     isLoading: boolean;
 }
@@ -57,11 +57,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push("/dashboard");
     };
 
-    const logout = () => {
+    const logout = (shouldRedirect: boolean = true) => {
         setToken(null);
         setUser(null);
         localStorage.removeItem("token");
-        router.push("/login");
+        if (shouldRedirect) {
+            router.push("/login");
+        }
     };
 
     const updateUser = (newUser: User) => {

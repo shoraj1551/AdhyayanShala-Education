@@ -21,11 +21,11 @@ export function AuthSelectionModal({ isOpen, onClose }: AuthSelectionModalProps)
 
     const handleGuestLogin = async () => {
         try {
-            logout(); // Clear old session first
+            logout(false); // Silent logout (no redirect)
             const res = await api.post("/auth/guest");
             login(res.token, res.user);
             onClose();
-            router.push("/courses");
+            // login() redirects to /dashboard, which is fine for now.
         } catch (err) {
             console.error("Guest login failed", err);
         }

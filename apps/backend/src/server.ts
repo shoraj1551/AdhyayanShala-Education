@@ -28,7 +28,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/tests', testRoutes);
-app.use('/api/tests', testRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/student', studentRoutes); // New Route
 

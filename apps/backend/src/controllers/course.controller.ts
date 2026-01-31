@@ -111,9 +111,7 @@ export const getCourse = async (req: Request, res: Response) => {
     }
 };
 
-// Import PrismaClient if not exists
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+
 
 export const enrollCourse = async (req: AuthRequest, res: Response) => {
     try {

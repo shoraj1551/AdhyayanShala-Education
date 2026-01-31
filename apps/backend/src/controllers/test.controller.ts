@@ -105,8 +105,7 @@ export const deleteQuestion = async (req: Request, res: Response) => {
 };
 
 
-// Import PrismaClient if not exists (assume added at top)
-const prisma = new PrismaClient(); // This might be duplicate if I add it at top separately. I'll add imports at top first.
+
 
 export const submitTest = async (req: AuthRequest, res: Response) => {
     try {

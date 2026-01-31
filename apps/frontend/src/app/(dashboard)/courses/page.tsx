@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { CourseCard } from "@/components/course-card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 interface Course {
@@ -82,6 +83,52 @@ export default function CoursesPage() {
                     )}
                 </div>
             )}
+
+            {/* Live Classes Section */}
+            <div className="mt-16">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight">Upcoming Live Classes</h2>
+                        <p className="text-muted-foreground">Join real-time sessions with industry experts.</p>
+                    </div>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2">
+                    {[
+                        { title: "System Design Masterclass", date: "Tomorrow, 8:00 PM", instructor: "Dr. Sarah Chen", image: "bg-blue-500/10" },
+                        { title: "Advanced React Patterns", date: "Sat, 2:00 PM", instructor: "Mike Johnson", image: "bg-purple-500/10" }
+                    ].map((cls, i) => (
+                        <div key={i} className="flex gap-4 p-4 rounded-xl border bg-card hover:bg-accent/50 transition-colors cursor-pointer group">
+                            <div className={`w-24 h-24 rounded-lg ${cls.image} flex items-center justify-center`}>
+                                <div className="p-2 bg-background/50 rounded-full backdrop-blur-sm">
+                                    <Clock className="w-5 h-5 text-primary" />
+                                </div>
+                            </div>
+                            <div className="flex flex-col justify-center flex-1">
+                                <h3 className="font-bold group-hover:text-primary transition-colors">{cls.title}</h3>
+                                <p className="text-sm text-muted-foreground">with {cls.instructor}</p>
+                                <div className="mt-3 flex items-center gap-4 text-xs font-medium">
+                                    <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-500 border border-green-500/20">Live</span>
+                                    <span className="text-muted-foreground">{cls.date}</span>
+                                </div>
+                            </div>
+                            <Button variant="outline" className="self-center">Join</Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Newsletter / Waitlist */}
+            <div className="mt-12 rounded-2xl bg-gradient-to-br from-indigo-900/50 to-purple-900/50 p-8 md:p-12 text-center relative overflow-hidden border border-white/10">
+                <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10" />
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Stay Ahead of the Curve</h2>
+                <p className="text-indigo-200 max-w-xl mx-auto mb-8">
+                    Get weekly updates on new courses, live class schedules, and exclusive learning resources delivered to your inbox.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                    <Input placeholder="Enter your email" className="bg-white/5 border-white/10 text-white placeholder:text-white/40" />
+                    <Button className="bg-white text-indigo-950 hover:bg-white/90 font-bold">Join Waitlist</Button>
+                </div>
+            </div>
         </div>
     );
 }
