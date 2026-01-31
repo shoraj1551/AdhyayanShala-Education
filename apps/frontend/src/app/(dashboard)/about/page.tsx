@@ -9,7 +9,7 @@ export default function AboutPage() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Hero Section */}
             <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tight">About Shoraj Learning</h1>
+                <h1 className="text-4xl font-bold tracking-tight">About AdhyayanShala Education</h1>
                 <p className="text-xl text-muted-foreground max-w-3xl">
                     Empowering lifelong learners through structured paths, hands-on practice, and a community-driven approach to education.
                 </p>

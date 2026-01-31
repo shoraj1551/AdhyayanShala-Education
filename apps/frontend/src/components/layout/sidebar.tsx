@@ -60,8 +60,8 @@ export function Sidebar() {
         <div className="flex h-full min-h-screen w-64 flex-col border-r bg-card text-card-foreground">
             <div className="flex h-16 items-center border-b px-6">
                 <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary">
-                    <BookOpen className="h-6 w-6" />
-                    <span>Shoraj</span>
+                    <img src="/logo.png" alt="AdhyayanShala" className="h-8 w-8 object-contain" />
+                    <span>AdhyayanShala</span>
                 </Link>
             </div>
             <div className="flex-1 overflow-y-auto py-4">
@@ -102,7 +102,7 @@ export function Sidebar() {
             <div className="border-t p-4">
                 {user ? (
                     <button
-                        onClick={logout}
+                        onClick={() => logout()}
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                     >
                         <LogOut className="h-4 w-4" />

@@ -45,7 +45,7 @@ export default function TestEditorPage() {
         const testId = Array.isArray(id) ? id[0] : id;
         if (!testId) return;
 
-        api.get(`/tests/${testId}`, token)
+        api.get(`/tests/${testId}`, token || undefined)
             .then(data => {
                 setTest(data);
                 setQuestions(data.questions || []);

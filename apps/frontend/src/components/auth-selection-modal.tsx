@@ -80,7 +80,7 @@ export function AuthSelectionModal({ isOpen, onClose }: AuthSelectionModalProps)
                             Choose Your Journey
                         </DialogTitle>
                         <DialogDescription className="text-lg text-zinc-400 mt-2">
-                            Select how you want to interact with Shoraj Learning Platform
+                            Select how you want to interact with AdhyayanShala Education
                         </DialogDescription>
                     </DialogHeader>
 

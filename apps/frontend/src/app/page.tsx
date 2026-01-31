@@ -35,8 +35,8 @@ export default function LandingPage() {
       {/* Navbar (Simplified for Landing) */}
       <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md">
         <div className="flex items-center gap-2 font-bold text-xl text-primary">
-          <BookOpen className="h-6 w-6" />
-          <span>Shoraj</span>
+          <img src="/logo.png" alt="AdhyayanShala" className="h-8 w-8 object-contain" />
+          <span>AdhyayanShala</span>
         </div>
         <div className="flex items-center gap-4">
           {user ? (
@@ -147,12 +147,12 @@ export default function LandingPage() {
                 Our Story & Mission
               </motion.h2>
               <motion.p variants={fadeIn} className="mt-4 text-muted-foreground text-lg leading-relaxed">
-                Shoraj was founded on a simple belief: <strong>Quality education should be accessible to everyone, everywhere.</strong>
+                AdhyayanShala was founded on a simple belief: <strong>Quality education should be accessible to everyone, everywhere.</strong>
                 <br /><br />
                 In a rapidly evolving digital world, traditional learning methods often fall behind.
                 We built this platform to bridge the gap between theoretical knowledge and practical application.
                 Whether you're a student looking to upskill or an instructor passionate about teaching,
-                Shoraj provides the tools you need to succeed.
+                AdhyayanShala provides the tools you need to succeed.
               </motion.p>
               <motion.div variants={fadeIn} className="mt-8 flex gap-4">
                 <div className="flex flex-col gap-2">
@@ -183,7 +183,7 @@ export default function LandingPage() {
       <section className="py-24">
         <div className="container px-4 md:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose Shoraj?</h2>
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Why Choose AdhyayanShala?</h2>
             <p className="mt-4 text-muted-foreground text-lg">Everything you need to accelerate your learning journey.</p>
           </div>
 
@@ -226,10 +226,10 @@ export default function LandingPage() {
       <footer className="border-t py-12 bg-muted/20">
         <div className="container px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2 font-bold text-xl text-primary">
-            <BookOpen className="h-6 w-6" />
-            <span>Shoraj</span>
+            <img src="/logo.png" alt="AdhyayanShala" className="h-8 w-8 object-contain" />
+            <span>AdhyayanShala</span>
           </div>
-          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Shoraj Inc. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} AdhyayanShala Education. All rights reserved.</p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
             <Link href="/terms" className="hover:text-foreground">Terms</Link>

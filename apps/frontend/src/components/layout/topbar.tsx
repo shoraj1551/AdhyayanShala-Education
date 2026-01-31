@@ -36,8 +36,8 @@ export function Topbar() {
                     <SheetContent side="left" className="w-[300px] sm:w-[400px]">
                         <nav className="flex flex-col gap-4 mt-8">
                             <div className="flex items-center gap-2 font-bold text-xl text-primary px-2 mb-4">
-                                <BookOpen className="h-6 w-6" />
-                                <span>Shoraj</span>
+                                <img src="/logo.png" alt="AdhyayanShala" className="h-8 w-8 object-contain" />
+                                <span>AdhyayanShala</span>
                             </div>
                             {sidebarItems.map((item, index) => {
                                 if (item.title === "Create Course" && user?.role === 'STUDENT') return null;
@@ -61,7 +61,7 @@ export function Topbar() {
                             })}
                             <div className="border-t pt-4 mt-auto">
                                 <button
-                                    onClick={logout}
+                                    onClick={() => logout()}
                                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 >
                                     <LogOut className="h-4 w-4" />
