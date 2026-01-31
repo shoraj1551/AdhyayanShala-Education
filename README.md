@@ -1,4 +1,4 @@
-# Shoraj Tomer - Personal Portfolio & Educational Platform
+# AdhyayanShala Education - Educational Platform
 
 [![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/shorajtomer/shorajtomer.me)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
