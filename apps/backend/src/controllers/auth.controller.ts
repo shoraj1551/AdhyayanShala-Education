@@ -13,6 +13,13 @@ const registerSchema = z.object({
     password: z.string().min(6),
     name: z.string().optional(),
     role: z.enum(['STUDENT', 'INSTRUCTOR', 'ADMIN']).default('STUDENT'),
+    // Extended fields
+    bio: z.string().optional(),
+    expertise: z.string().optional(),
+    experience: z.string().optional().or(z.number().transform(String)), // Handle number input
+    linkedin: z.string().optional(),
+    currentStatus: z.string().optional(),
+    interests: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -40,6 +47,13 @@ export const register = async (req: Request, res: Response) => {
                 password: hashedPassword,
                 name: validatedData.name,
                 role: validatedData.role,
+                // Profile mappings
+                bio: validatedData.bio,
+                expertise: validatedData.expertise,
+                experience: validatedData.experience,
+                linkedin: validatedData.linkedin,
+                studentStatus: validatedData.currentStatus, // Map from frontend
+                interests: validatedData.interests,
             },
         });
 

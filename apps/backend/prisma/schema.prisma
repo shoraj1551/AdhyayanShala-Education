@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 enum Role {
@@ -39,10 +39,41 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  // Extended Profile
+  bio           String?
+  expertise     String?
+  experience    String?
+  linkedin      String?
+  studentStatus String?
+  interests     String?
+  
+  // OTP for critical actions
+  deleteOtp        String?
+  deleteOtpExpires DateTime?
+
   enrollments      Enrollment[]
   attempts         Attempt[]
   completedLessons LessonProgress[]
   courses          Course[]  @relation("InstructorCourses")
+  notifications    Notification[]
+  reviews          Review[]
+  notes            Note[]
+
+  phoneNumber      String?
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, lessonId]) // One note per lesson per user
 }
 
 model LearningPath {
@@ -61,6 +92,17 @@ model Course {
   prerequisites String?  // JSON or text list of prereqs
   price         Float    @default(0)
   isPublished   Boolean  @default(false)
+  publishedAt   DateTime? // When it was first published
+  
+  // New Fields for Live Classes
+  type            String   @default("VIDEO") // VIDEO or LIVE
+  meetingPlatform String?  // ZOOM, MEET
+  meetingLink     String?
+  schedule        String?
+
+  liveSettings    LiveClassSettings?
+  schedules       ClassSchedule[]
+
   instructorId  String?
   instructor    User?    @relation("InstructorCourses", fields: [instructorId], references: [id])
   
@@ -68,9 +110,33 @@ model Course {
   tests         Test[]
   enrollments   Enrollment[]
   learningPaths LearningPath[] @relation("PathCourses")
-  
+  reviews       Review[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model LiveClassSettings {
+  id              String  @id @default(uuid())
+  courseId        String  @unique
+  course          Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  platform        String  @default("ZOOM")
+  meetingLink     String?
+  scheduleNote    String? // e.g. "Mon, Wed, Fri at 8 PM IST"
+  difficulty      String? // If different from CourseLevel
+}
+
+model ClassSchedule {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  // For Calendar Generation
+  dayOfWeek Int?     // 1=Mon, 7=Sun (ISO)
+  startTime String   // "20:00"
+  duration  Int      @default(60) // minutes
+  
+  createdAt DateTime @default(now())
 }
 
 model Module {
@@ -80,18 +146,26 @@ model Module {
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id])
   lessons   Lesson[]
+  tests     Test[]
 }
 
 model Lesson {
   id        String   @id @default(uuid())
   title     String
-  content   String?  // Text content or video URL
+  content   String?  // Text content or video URL (Legacy or generic)
   type      String   // VIDEO, TEXT
+  
+  // New Optional Fields
+  videoUrl      String? // For YouTube/Vimeo links
+  summary       String? // Text summary of the lesson
+  attachmentUrl String? // Link to PDF/Doc
+
   duration  Int?     // In minutes
   order     Int      @default(0)
   moduleId  String
   module    Module   @relation(fields: [moduleId], references: [id])
   progress  LessonProgress[]
+  notes     Note[]
 }
 
 model LessonProgress {
@@ -112,6 +186,13 @@ model Enrollment {
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id])
   enrolledAt DateTime @default(now())
+
+  // Notification Preferences
+  notify15m   Boolean @default(true)
+  notify30m   Boolean @default(false)
+  notify1h    Boolean @default(false)
+  notifySMS   Boolean @default(false)
+  notifyEmail Boolean @default(true)
 }
 
 model Test {
@@ -119,9 +200,15 @@ model Test {
   title     String
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id])
+  
+  // Optional: Link to a Module (for ordering within curriculum)
+  moduleId  String?
+  module    Module?  @relation(fields: [moduleId], references: [id])
+  
   questions Question[]
   attempts  Attempt[]
   duration  Int      @default(60)
+  order     Int      @default(0) // Order within the module or course
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -157,4 +244,34 @@ model Attempt {
   passed    Boolean  @default(false)
   startedAt DateTime @default(now())
   completedAt DateTime?
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  type      String   @default("NEWS") // NEWS, COURSE_UPDATE
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String?
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int      @default(5)
+  comment   String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

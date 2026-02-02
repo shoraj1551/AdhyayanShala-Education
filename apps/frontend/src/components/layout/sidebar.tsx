@@ -10,7 +10,8 @@ import {
     Settings,
     LogOut,
     Library,
-    History
+    History,
+    Plus
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -21,7 +22,7 @@ const sidebarItems = [
         icon: LayoutDashboard,
     },
     {
-        title: "Browse Courses",
+        title: "Browse Courses", // Will be dynamic in component
         href: "/courses",
         icon: Library,
     },
@@ -46,9 +47,14 @@ const sidebarItems = [
         icon: Settings,
     },
     {
+        title: "My Courses",
+        href: "/instructor/courses",
+        icon: BookOpen,
+    },
+    {
         title: "Create Course",
         href: "/instructor/create",
-        icon: BookOpen,
+        icon: Plus,
     },
 ];
 
@@ -78,7 +84,12 @@ export function Sidebar() {
                             if (item.title.startsWith("Admin") && user.role !== 'ADMIN') {
                                 return null;
                             }
-                            if (item.title === "Create Course" && user.role === 'STUDENT') {
+                            // Instructor Specific
+                            if ((item.title === "Create Course" || item.title === "My Courses") && user.role !== 'INSTRUCTOR') {
+                                return null;
+                            }
+                            // Student Specific
+                            if (item.title === "My Learning" && user.role !== 'STUDENT') {
                                 return null;
                             }
                         }
@@ -93,7 +104,7 @@ export function Sidebar() {
                                 )}
                             >
                                 <Icon className="h-4 w-4" />
-                                {item.title}
+                                {item.title === "Browse Courses" && user?.role === 'INSTRUCTOR' ? "Market Research" : item.title}
                             </Link>
                         );
                     })}

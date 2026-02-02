@@ -5,7 +5,7 @@ import { authenticateToken, authorizeRole } from '../middleware/auth.middleware'
 const router = Router();
 
 // Public / Student Routes
-router.get('/', authenticateToken, TestController.listTests); // Everyone can list tests? Maybe filters later.
+router.get('/', TestController.listTests); // Everyone can list tests. Filters applied in controller if needed.
 router.get('/:id', authenticateToken, TestController.getTest); // IsEditor check inside handles hiding answers
 router.post('/:id/submit', authenticateToken, TestController.submitTest);
 router.get('/:id/leaderboard', authenticateToken, TestController.getLeaderboard);

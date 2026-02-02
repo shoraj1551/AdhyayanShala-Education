@@ -10,6 +10,11 @@ interface User {
     name?: string;
     role: string;
     avatar?: string;
+    // Extended Profile Fields
+    bio?: string;
+    linkedin?: string;
+    expertise?: string;
+    phoneNumber?: string;
 }
 
 interface AuthContextType {

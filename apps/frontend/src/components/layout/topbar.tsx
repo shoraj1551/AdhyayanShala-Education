@@ -1,12 +1,14 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { User, Menu, LayoutDashboard, Library, GraduationCap, Settings, History, BookOpen, LogOut } from "lucide-react";
+import { User, Menu, LayoutDashboard, Library, GraduationCap, Settings, History, BookOpen, LogOut, Check } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 const sidebarItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -17,6 +19,11 @@ const sidebarItems = [
     { title: "Admin (Tests)", href: "/admin/tests", icon: Settings },
     { title: "Create Course", href: "/instructor/create", icon: BookOpen },
 ];
+
+import { NotificationBell } from "@/components/NotificationBell";
+
+// Removed inline NotificationList in favor of component
+
 
 export function Topbar() {
     const { user, logout } = useAuth();
@@ -77,6 +84,9 @@ export function Topbar() {
                 </h1>
             </div>
             <div className="flex items-center gap-4">
+                {/* Notifications */}
+                <NotificationBell />
+
                 <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 shadow-sm">
                     <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                         <User className="h-4 w-4" />

@@ -6,16 +6,32 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Save, Trash, FileText, Video } from "lucide-react";
+import { Plus, Save, Trash, FileText, Video, Upload, Loader2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { LiveClassSettingsForm } from "@/components/LiveClassSettingsForm";
 
 interface Lesson {
     id: string;
     title: string;
     type: 'VIDEO' | 'TEXT';
     content: string;
+    videoUrl?: string;
+    summary?: string;
+    attachmentUrl?: string;
+    order: number;
+    createdAt?: string; // useful for sorting if order is same
+}
+
+interface Test {
+    id: string;
+    title: string;
+    duration: number;
+    moduleId?: string;
     order: number;
 }
 
@@ -24,11 +40,13 @@ interface Module {
     title: string;
     order: number;
     lessons: Lesson[];
+    tests?: Test[];
 }
 
 export default function CourseEditorPage() {
     const { token } = useAuth();
     const params = useParams();
+    const router = useRouter();  // Added missing navigation hook
     const [course, setCourse] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -37,7 +55,22 @@ export default function CourseEditorPage() {
     const [newModuleTitle, setNewModuleTitle] = useState("");
 
     const [addingLessonToModuleId, setAddingLessonToModuleId] = useState<string | null>(null);
-    const [newLessonData, setNewLessonData] = useState({ title: "", type: "VIDEO" as "VIDEO" | "TEXT", content: "" });
+
+    // Updated state for new optional fields
+    const [newLessonData, setNewLessonData] = useState({
+        title: "",
+        type: "VIDEO" as "VIDEO" | "TEXT",
+        content: "", // Legacy field, kept for compatibility
+        videoUrl: "",
+        summary: "",
+        attachmentUrl: ""
+    });
+
+    const [uploading, setUploading] = useState(false);
+
+    // Test Creation State
+    const [addingTestToModuleId, setAddingTestToModuleId] = useState<string | null>(null);
+    const [newTestData, setNewTestData] = useState({ title: "", duration: 60 });
 
     const fetchCourse = () => {
         if (token && params.id) {
@@ -55,7 +88,7 @@ export default function CourseEditorPage() {
     const handleAddModule = async () => {
         if (!newModuleTitle.trim()) return;
         try {
-            await api.post(`/courses/${params.id}/modules`, { title: newModuleTitle }, token);
+            await api.post(`/courses/${params.id}/modules`, { title: newModuleTitle }, token ?? undefined);
             setNewModuleTitle("");
             setIsAddingModule(false);
             fetchCourse();
@@ -64,20 +97,120 @@ export default function CourseEditorPage() {
         }
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'videoUrl' | 'attachmentUrl') => {
+        const file = e.target.files?.[0];
+        if (!file || !token) return;
+
+        setUploading(true);
+        try {
+            const result = await api.upload(file, token ?? undefined);
+            // Result is { url: string, filename: string }
+            setNewLessonData(prev => ({ ...prev, [field]: result.url }));
+        } catch (error) {
+            console.error("Upload failed", error);
+            alert("Upload failed. Ensure backend is running.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleAddTest = async (moduleId: string) => {
+        if (!newTestData.title.trim()) return;
+        try {
+            const module = course.modules.find((m: any) => m.id === moduleId);
+            const currentCount = (module?.lessons?.length || 0) + (module?.tests?.length || 0);
+
+            await api.post('/tests', {
+                title: newTestData.title,
+                duration: Number(newTestData.duration),
+                courseId: course.id,
+                moduleId: moduleId,
+                order: currentCount
+            }, token ?? undefined);
+
+            setAddingTestToModuleId(null);
+            setNewTestData({ title: "", duration: 60 });
+            alert("Test created! Questions can be added later.");
+            fetchCourse();
+        } catch (error) {
+            console.error(error);
+            alert("Failed to add test");
+        }
+    };
+
     const handleAddLesson = async (moduleId: string) => {
         if (!newLessonData.title.trim()) return;
         try {
-            // Updated route structure based on previous backend changes
-            // router.post('/courses/modules/:moduleId/lessons' ...
-            // In routes.ts: router.post('/modules/:moduleId/lessons', ...)
-            await api.post(`/courses/modules/${moduleId}/lessons`, newLessonData, token);
+            // Send all new optional fields
+            await api.post(`/courses/modules/${moduleId}/lessons`, {
+                ...newLessonData,
+                type: newLessonData.videoUrl ? "VIDEO" : "TEXT"
+            }, token ?? undefined);
 
             setAddingLessonToModuleId(null);
-            setNewLessonData({ title: "", type: "VIDEO", content: "" });
+            // Reset form
+            setNewLessonData({
+                title: "",
+                type: "VIDEO",
+                content: "",
+                videoUrl: "",
+                summary: "",
+                attachmentUrl: ""
+            });
             fetchCourse();
         } catch (error) {
             console.error(error);
             alert("Failed to add lesson");
+        }
+    };
+
+    const handleDeleteModule = async (moduleId: string) => {
+        if (!confirm("Are you sure you want to delete this module? All lessons and tests within it will be deleted.")) return;
+        try {
+            await api.delete(`/courses/modules/${moduleId}`, token ?? undefined);
+            fetchCourse();
+        } catch (error) {
+            console.error(error);
+            alert("Failed to delete module");
+        }
+    };
+
+    // --- DELETE COURSE LOGIC ---
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
+    const [deleteOtp, setDeleteOtp] = useState("");
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    const handleRequestDeleteOtp = async () => {
+        try {
+            await api.post(`/courses/${course.id}/delete-otp`, {}, token ?? undefined);
+            setOtpSent(true);
+            alert("OTP sent to your registered email (Check server console for demo).");
+        } catch (error) {
+            alert("Failed to send OTP.");
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        // Logic for Enrolled Courses (OTP Required)
+        const hasEnrollments = (course._count?.enrollments || 0) > 0;
+
+        if (hasEnrollments) {
+            if (!deleteOtp) return alert("Please enter OTP (Required for enrolled courses)");
+            if (!confirm("FINAL WARNING: This action cannot be undone. Type OK to proceed.")) return;
+        } else {
+            if (!confirm("Are you sure you want to delete this course?")) return;
+        }
+
+        setDeleteLoading(true);
+        try {
+            await api.delete(`/courses/${course.id}`, { otp: deleteOtp }, token ?? undefined);
+            alert("Course deleted successfully.");
+            router.push('/instructor/courses');
+        } catch (error: any) {
+            alert(error.response?.data?.message || "Failed to delete course.");
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -89,82 +222,222 @@ export default function CourseEditorPage() {
             <div className="flex justify-between items-center border-b pb-4">
                 <div>
                     <h1 className="text-3xl font-bold">{course.title}</h1>
-                    <p className="text-muted-foreground">Course Content Editor</p>
+                    <p className="text-muted-foreground">Course Content Editor {course.isPublished && <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded ml-2">Published</span>}</p>
                 </div>
-                <Button variant="outline" onClick={() => window.open(`/courses/${params.id}`, '_blank')}>
-                    Preview Course
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => window.open(`/courses/${params.id}`, '_blank')}>
+                        Preview Course
+                    </Button>
+                    {!course.isPublished && (
+                        <Button
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={async () => {
+                                if (!confirm("Are you sure? This will make the course public and announce it to all users.")) return;
+                                try {
+                                    await api.post(`/courses/${course.id}/publish`, {}, token ?? undefined);
+                                    alert("Course Published Successfully!");
+                                    fetchCourse();
+                                } catch (e) {
+                                    alert("Failed to publish");
+                                }
+                            }}
+                        >
+                            Publish Course
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <div className="space-y-6">
+
+                {/* Live Class Settings */}
+                <div className="mb-8">
+                    <LiveClassSettingsForm courseId={course.id} />
+                </div>
+
                 {course.modules?.map((module: Module) => (
                     <Card key={module.id} className="relative overflow-hidden">
                         <div className="bg-muted/30 p-4 border-b flex justify-between items-center">
                             <h3 className="font-bold text-lg">Module: {module.title}</h3>
-                            <Button size="sm" variant="ghost" className="text-destructive h-8 w-8 p-0"><Trash className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" className="text-destructive h-8 w-8 p-0" onClick={() => handleDeleteModule(module.id)}>
+                                <Trash className="h-4 w-4" />
+                            </Button>
                         </div>
                         <CardContent className="p-4 space-y-4">
                             {module.lessons?.length === 0 && <p className="text-sm text-muted-foreground italic">No lessons in this module.</p>}
 
                             <div className="space-y-2">
-                                {module.lessons?.map((lesson) => (
-                                    <div key={lesson.id} className="flex items-center gap-3 p-3 bg-card border rounded hover:bg-accent/50 transition-colors">
-                                        <div className="p-2 bg-primary/10 rounded text-primary">
-                                            {lesson.type === 'VIDEO' ? <Video className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                                {[
+                                    ...(module.lessons || []).map(l => ({ ...l, kind: 'LESSON' })),
+                                    ...(module.tests || []).map(t => ({ ...t, kind: 'TEST' }))
+                                ].sort((a: any, b: any) => a.order - b.order).map((item: any) => (
+                                    <div key={`${item.kind}-${item.id}`} className="flex items-center gap-3 p-3 bg-card border rounded hover:bg-accent/50 transition-colors">
+                                        <div className={cn("p-2 rounded", item.kind === 'TEST' ? "bg-purple-100 text-purple-600" : "bg-primary/10 text-primary")}>
+                                            {item.kind === 'TEST' ? (
+                                                <FileText className="h-4 w-4" />
+                                            ) : (
+                                                item.type === 'VIDEO' || item.videoUrl ? <Video className="h-4 w-4" /> : <FileText className="h-4 w-4" />
+                                            )}
                                         </div>
                                         <div className="flex-1">
-                                            <p className="font-semibold">{lesson.title}</p>
-                                            <p className="text-xs text-muted-foreground truncate max-w-[300px]">{lesson.content || "No content"}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-semibold">{item.title}</p>
+                                                {item.kind === 'TEST' && <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">TEST</span>}
+                                            </div>
+                                            {item.kind === 'LESSON' && (
+                                                <div className="flex gap-2 text-xs text-muted-foreground">
+                                                    {item.videoUrl && <span className="flex items-center gap-1"><Video className="h-3 w-3" /> Video</span>}
+                                                    {item.attachmentUrl && <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> PDF</span>}
+                                                </div>
+                                            )}
+                                            {item.kind === 'TEST' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-6 text-xs mt-1 border-purple-200 text-purple-700 hover:bg-purple-50"
+                                                    onClick={() => router.push(`/instructor/tests/${item.id}`)}
+                                                >
+                                                    Edit Questions
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
 
                             {/* Add Lesson Form */}
-                            {addingLessonToModuleId === module.id ? (
-                                <div className="bg-muted/20 p-4 rounded border space-y-3 mt-4">
-                                    <h4 className="font-medium text-sm">New Lesson</h4>
-                                    <Input
-                                        placeholder="Lesson Title"
-                                        value={newLessonData.title}
-                                        onChange={e => setNewLessonData({ ...newLessonData, title: e.target.value })}
-                                    />
-                                    <div className="flex gap-4">
-                                        <select
-                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                            value={newLessonData.type}
-                                            onChange={e => setNewLessonData({ ...newLessonData, type: e.target.value as "VIDEO" | "TEXT" })}
-                                        >
-                                            <option value="VIDEO">Video URL</option>
-                                            <option value="TEXT">Text Content</option>
-                                        </select>
-                                    </div>
-                                    {newLessonData.type === 'VIDEO' ? (
+                            {addingLessonToModuleId === module.id && (
+                                <div className="bg-muted/20 p-4 rounded border space-y-4 mt-4 animate-in fade-in slide-in-from-top-2">
+                                    <h4 className="font-medium text-sm">New Lesson Details</h4>
+
+                                    <div className="space-y-2">
+                                        <Label>Lesson Title</Label>
                                         <Input
-                                            placeholder="YouTube/Vimeo URL"
-                                            value={newLessonData.content}
-                                            onChange={e => setNewLessonData({ ...newLessonData, content: e.target.value })}
+                                            placeholder="e.g. Introduction to Derivatives"
+                                            value={newLessonData.title}
+                                            onChange={e => setNewLessonData({ ...newLessonData, title: e.target.value })}
                                         />
-                                    ) : (
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Video Resource <span className="text-muted-foreground text-xs">(External URL or Upload)</span></Label>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <Video className="h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="https://youtube.com/..."
+                                                    value={newLessonData.videoUrl || ""}
+                                                    onChange={e => setNewLessonData({ ...newLessonData, videoUrl: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    id={`video-upload-${module.id}`}
+                                                    type="file"
+                                                    accept="video/*"
+                                                    className="hidden"
+                                                    onChange={(e) => handleFileUpload(e, 'videoUrl')}
+                                                />
+                                                <Button size="sm" variant="outline" className="w-full" onClick={() => document.getElementById(`video-upload-${module.id}`)?.click()} disabled={uploading}>
+                                                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                                    Upload Video from Device
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Text Summary / Content <span className="text-muted-foreground text-xs">(Optional - Supports LaTeX via $$...$$)</span></Label>
                                         <Textarea
-                                            placeholder="Lesson content logic explanation..."
-                                            value={newLessonData.content}
-                                            onChange={e => setNewLessonData({ ...newLessonData, content: e.target.value })}
+                                            placeholder="Summarize the lesson or write full content. Use $$x^2$$ for math."
+                                            value={newLessonData.summary || ""}
+                                            onChange={e => setNewLessonData({ ...newLessonData, summary: e.target.value })}
+                                            className="min-h-[100px]"
                                         />
-                                    )}
-                                    <div className="flex gap-2 justify-end">
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Attachment <span className="text-muted-foreground text-xs">(External URL or Upload PDF/Doc)</span></Label>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="https://drive.google.com/... (PDF/Doc)"
+                                                    value={newLessonData.attachmentUrl || ""}
+                                                    onChange={e => setNewLessonData({ ...newLessonData, attachmentUrl: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    id={`doc-upload-${module.id}`}
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx,.txt"
+                                                    className="hidden"
+                                                    onChange={(e) => handleFileUpload(e, 'attachmentUrl')}
+                                                />
+                                                <Button size="sm" variant="outline" className="w-full" onClick={() => document.getElementById(`doc-upload-${module.id}`)?.click()} disabled={uploading}>
+                                                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                                    Upload Document from Device
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 justify-end pt-2">
                                         <Button variant="ghost" size="sm" onClick={() => setAddingLessonToModuleId(null)}>Cancel</Button>
-                                        <Button size="sm" onClick={() => handleAddLesson(module.id)}>Add Lesson</Button>
+                                        <Button size="sm" onClick={() => handleAddLesson(module.id)}>Save Lesson</Button>
                                     </div>
                                 </div>
-                            ) : (
-                                <Button
-                                    variant="outline"
-                                    className="w-full mt-2 border-dashed"
-                                    onClick={() => setAddingLessonToModuleId(module.id)}
-                                >
-                                    <Plus className="mr-2 h-4 w-4" /> Add Lesson
-                                </Button>
+                            )}
+
+                            {addingTestToModuleId === module.id && (
+                                <div className="bg-purple-50/50 p-4 rounded border border-purple-100 space-y-4 mt-4 animate-in fade-in slide-in-from-top-2">
+                                    <h4 className="font-medium text-sm text-purple-900">New Test Details</h4>
+
+                                    <div className="space-y-2">
+                                        <Label>Test Title</Label>
+                                        <Input
+                                            placeholder="e.g. Mid-Module Quiz"
+                                            value={newTestData.title}
+                                            onChange={e => setNewTestData({ ...newTestData, title: e.target.value })}
+                                            className="bg-white"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Duration (minutes)</Label>
+                                        <Input
+                                            type="number"
+                                            value={newTestData.duration}
+                                            onChange={e => setNewTestData({ ...newTestData, duration: Number(e.target.value) })}
+                                            className="bg-white"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 justify-end pt-2">
+                                        <Button variant="ghost" size="sm" onClick={() => setAddingTestToModuleId(null)}>Cancel</Button>
+                                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => handleAddTest(module.id)}>Create Test</Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!addingLessonToModuleId && !addingTestToModuleId && (
+                                <div className="flex gap-2 mt-2">
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1 border-dashed"
+                                        onClick={() => setAddingLessonToModuleId(module.id)}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" /> Add Lesson
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1 border-dashed text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100"
+                                        onClick={() => setAddingTestToModuleId(module.id)}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" /> Add Test
+                                    </Button>
+                                </div>
                             )}
                         </CardContent>
                     </Card>
@@ -192,6 +465,80 @@ export default function CourseEditorPage() {
                     </Button>
                 )}
             </div>
-        </div>
+
+
+            {/* DELETE COURSE SECTION */}
+            <div className="border-t pt-8 mt-12 pb-8">
+                <Card className="border-destructive/50 bg-destructive/5">
+                    <CardHeader>
+                        <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex justify-between items-center">
+                        <div>
+                            <p className="font-semibold text-foreground">Delete this course</p>
+                            <p className="text-sm text-muted-foreground">Once you delete a course, there is no going back. Please be certain.</p>
+                        </div>
+                        <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>Delete Course</Button>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Course</DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. This will permanently delete the course, all modules, lessons, and tests.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        {(course._count?.enrollments || 0) > 0 ? (
+                            <>
+                                {!otpSent ? (
+                                    <div className="text-center space-y-4">
+                                        <p className="text-sm font-medium text-amber-600">This course has enrolled students. Authenticated deletion required.</p>
+                                        <p className="text-sm">To verify it's you, we need to send an OTP to your email.</p>
+                                        <Button onClick={handleRequestDeleteOtp} className="w-full">Send OTP</Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="p-3 bg-green-50 text-green-700 text-sm rounded border border-green-200">
+                                            OTP sent! Please check your email (or server console).
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Enter OTP</Label>
+                                            <Input
+                                                placeholder="6-digit code"
+                                                value={deleteOtp}
+                                                onChange={(e) => setDeleteOtp(e.target.value)}
+                                                maxLength={6}
+                                                className="text-center text-lg tracking-widest"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="p-4 bg-muted/50 rounded-lg text-center">
+                                <p className="text-sm text-foreground mb-2">This course has <span className="font-bold">0 students</span> enrolled.</p>
+                                <p className="text-xs text-muted-foreground">You can delete it immediately without verification.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+                        {/* Show Delete Button if: (No Enrollments) OR (OTP Sent) */}
+                        {((course._count?.enrollments || 0) === 0 || otpSent) && (
+                            <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteLoading}>
+                                {deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2 h-4 w-4" />}
+                                {(course._count?.enrollments || 0) === 0 ? "Delete Immediately" : "Confirm Delete"}
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }

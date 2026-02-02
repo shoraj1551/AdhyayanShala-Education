@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import courseRoutes from './routes/course.routes';
 import progressRoutes from './routes/progress.routes';
 import testRoutes from './routes/test.routes';
+import activityRoutes from './routes/activity.routes';
+
 import historyRoutes from './routes/history.routes';
 import authRoutes from './routes/auth.routes';
 import studentRoutes from './routes/student.routes';
@@ -24,12 +26,24 @@ app.get('/', (req: Request, res: Response) => {
     res.send('Shoraj Learning Platform API');
 });
 
+import path from 'path';
+import uploadRoutes from './routes/upload.routes';
+import reviewRoutes from './routes/review.routes';
+
+// ... (existing imports)
+
+// Serve static files from public directory
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/history', historyRoutes);
-app.use('/api/student', studentRoutes); // New Route
+app.use('/api/student', studentRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/upload', uploadRoutes); // New Upload Route
+app.use('/api/reviews', reviewRoutes);
 
 app.listen(port, () => {
     console.log(`⚡️[server]: Server is running at http://localhost:${port}`);

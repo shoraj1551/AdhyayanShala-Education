@@ -13,132 +13,108 @@ interface AuthSelectionModalProps {
     onClose: () => void;
 }
 
-import { api } from "@/lib/api";
-
 export function AuthSelectionModal({ isOpen, onClose }: AuthSelectionModalProps) {
     const router = useRouter();
-    const { login, logout } = useAuth(); // Assuming login logic handles token setting
-
-    const handleGuestLogin = async () => {
-        try {
-            logout(false); // Silent logout (no redirect)
-            const res = await api.post("/auth/guest");
-            login(res.token, res.user);
-            onClose();
-            // login() redirects to /dashboard, which is fine for now.
-        } catch (err) {
-            console.error("Guest login failed", err);
-        }
-    };
-
-    const cards = [
-        {
-            role: "Student",
-            icon: GraduationCap,
-            description: "Join courses, track progress, and earn certificates.",
-            color: "from-blue-600 to-indigo-600",
-            border: "hover:border-blue-500/50",
-            link: "/login?role=student",
-            register: "/register?role=student",
-        },
-        {
-            role: "Instructor",
-            icon: LayoutDashboard,
-            description: "Create courses, manage students, and earn revenue.",
-            color: "from-emerald-600 to-teal-600",
-            border: "hover:border-emerald-500/50",
-            link: "/login?role=instructor",
-            register: "/register?role=instructor",
-        },
-        {
-            role: "Admin",
-            icon: ShieldCheck,
-            description: "Manage platform settings and content moderation.",
-            color: "from-rose-600 to-orange-600",
-            border: "hover:border-rose-500/50",
-            link: "/login?role=admin",
-            register: null, // Admin usually created manually
-        },
-        {
-            role: "Guest",
-            icon: UserCircle2,
-            description: "Browse the course catalog freely before joining.",
-            color: "from-zinc-600 to-slate-600",
-            border: "hover:border-zinc-500/50",
-            action: handleGuestLogin,
-        }
-    ];
+    const { login } = useAuth();
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-4xl bg-zinc-950/90 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl ring-1 ring-white/10">
-                <div className="absolute inset-0 bg-grid-white/5 mask-image-gradient-b pointer-events-none" />
+            <DialogContent className="sm:max-w-4xl bg-background/95 backdrop-blur-xl border-border p-0 overflow-hidden shadow-2xl">
+                <div className="absolute inset-0 bg-grid-primary/5 mask-image-gradient-b pointer-events-none" />
 
-                <div className="p-8">
-                    <DialogHeader className="mb-8 text-center relative z-10">
-                        <DialogTitle className="text-3xl font-bold text-white drop-shadow-md">
-                            Choose Your Journey
+                <div className="p-8 relative z-10">
+                    <DialogHeader className="mb-8 text-center">
+                        <DialogTitle className="text-3xl font-bold tracking-tight">
+                            Welcome to AdhyayanShala
                         </DialogTitle>
-                        <DialogDescription className="text-lg text-zinc-400 mt-2">
-                            Select how you want to interact with AdhyayanShala Education
+                        <DialogDescription className="text-lg text-muted-foreground mt-2">
+                            Choose your role to continue
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
-                        {cards.map((card, index) => (
-                            <motion.div
-                                key={card.role}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className={`relative group overflow-hidden rounded-xl border border-white/10 bg-zinc-900/60 p-6 transition-all duration-300 ${card.border} hover:bg-zinc-900/80 hover:scale-[1.01] hover:shadow-xl`}
-                            >
-                                <div className={`absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity bg-gradient-to-br ${card.color}`} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-center justify-center">
 
-                                <div className="relative z-10">
-                                    <div className="flex items-start justify-between">
-                                        <div className={`p-3 rounded-lg bg-gradient-to-br ${card.color} w-fit ring-1 ring-white/10 text-white shadow-lg`}>
-                                            <card.icon className="w-8 h-8" />
-                                        </div>
-                                        {card.role !== "Guest" && (
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-xs font-medium px-2 py-1 rounded-full bg-white/10 text-white/90 border border-white/10">Select</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <h3 className="mt-4 text-xl font-bold text-white mb-2 tracking-tight">{card.role}</h3>
-                                    <p className="text-sm text-zinc-400 mb-6 min-h-[40px] leading-relaxed">{card.description}</p>
-
-                                    <div className="flex gap-3">
-                                        {card.action ? (
-                                            <Button
-                                                onClick={card.action}
-                                                variant="secondary"
-                                                className="w-full bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 transition-colors"
-                                            >
-                                                Continue as Guest
-                                            </Button>
-                                        ) : (
-                                            <>
-                                                <Link href={card.link} className="flex-1">
-                                                    <Button variant="ghost" className="w-full text-zinc-300 hover:text-white hover:bg-white/10 transition-colors">
-                                                        Login
-                                                    </Button>
-                                                </Link>
-                                                {card.register && (
-                                                    <Link href={card.register} className="flex-1">
-                                                        <Button className={`w-full bg-gradient-to-r ${card.color} text-white shadow-lg hover:opacity-90 border-0 transition-opacity`}>
-                                                            Register
-                                                        </Button>
-                                                    </Link>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
+                        {/* Instructor - Smaller */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="group relative overflow-hidden rounded-xl border bg-card p-5 hover:border-primary/50 transition-all hover:shadow-lg md:scale-90"
+                        >
+                            <div className="flex flex-col items-center text-center space-y-4">
+                                <div className="p-3 rounded-full bg-emerald-100 text-emerald-600 ring-4 ring-emerald-50">
+                                    <LayoutDashboard className="w-6 h-6" />
                                 </div>
-                            </motion.div>
-                        ))}
+                                <div>
+                                    <h3 className="font-bold text-lg">Instructor</h3>
+                                    <p className="text-sm text-muted-foreground mt-1">Teach and earn</p>
+                                </div>
+                                <div className="w-full flex gap-2">
+                                    <Link href="/login?role=instructor" className="flex-1">
+                                        <Button variant="outline" size="sm" className="w-full">Login</Button>
+                                    </Link>
+                                    <Link href="/register?role=instructor" className="flex-1">
+                                        <Button size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+                                            Register
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Student - Highlighted & Larger */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="group relative overflow-hidden rounded-2xl border-2 border-primary bg-card p-8 shadow-2xl z-20 md:scale-110"
+                        >
+                            <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
+                                Recommended
+                            </div>
+                            <div className="flex flex-col items-center text-center space-y-6">
+                                <div className="p-4 rounded-full bg-blue-100 text-blue-600 ring-8 ring-blue-50 shadow-sm">
+                                    <GraduationCap className="w-10 h-10" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-2xl text-primary">Student</h3>
+                                    <p className="text-muted-foreground mt-2">Access courses & build skills</p>
+                                </div>
+                                <div className="w-full space-y-3">
+                                    <Link href="/login?role=student" className="block">
+                                        <Button className="w-full text-lg h-12 shadow-blue-200 shadow-lg" size="lg">
+                                            Student Login <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </Link>
+                                    <p className="text-xs text-muted-foreground">
+                                        New here? <Link href="/register?role=student" className="text-primary hover:underline font-semibold">Create an account</Link>
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Admin - Smaller */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="group relative overflow-hidden rounded-xl border bg-card p-5 hover:border-primary/50 transition-all hover:shadow-lg md:scale-90"
+                        >
+                            <div className="flex flex-col items-center text-center space-y-4">
+                                <div className="p-3 rounded-full bg-rose-100 text-rose-600 ring-4 ring-rose-50">
+                                    <ShieldCheck className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg">Admin</h3>
+                                    <p className="text-sm text-muted-foreground mt-1">Platform control</p>
+                                </div>
+                                <div className="w-full flex gap-2">
+                                    <Link href="/login?role=admin" className="flex-1">
+                                        <Button variant="outline" size="sm" className="w-full">Login</Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        </motion.div>
+
                     </div>
                 </div>
             </DialogContent>
