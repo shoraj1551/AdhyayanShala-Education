@@ -8,9 +8,25 @@ export const getSettings = async (req: Request, res: Response) => {
         const { id } = req.params;
         const settings = await LiveClassService.getSettings(id);
         const schedules = await LiveClassService.getSchedules(id);
-        res.json({ settings, schedules });
+
+        // Auto-generate schedule note from schedules if not manually set
+        let scheduleNote = settings?.scheduleNote || '';
+        if (schedules.length > 0 && !scheduleNote) {
+            // Filter out schedules with null dayOfWeek
+            const validSchedules = schedules.filter(s => s.dayOfWeek !== null) as Array<{ dayOfWeek: number; startTime: string }>;
+            if (validSchedules.length > 0) {
+                scheduleNote = LiveClassService.generateScheduleNote(validSchedules);
+            }
+        }
+
+        res.json({
+            data: {
+                settings: settings ? { ...settings, scheduleNote } : null,
+                schedules
+            }
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching live settings' });
+        res.status(500).json({ message: 'Error fetching live class settings' });
     }
 };
 

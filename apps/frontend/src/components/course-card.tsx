@@ -24,9 +24,17 @@ interface CourseCardProps {
         description: string;
         level: string;
         price: number;
+        discountedPrice?: number;
+        type?: string;
         _count?: {
             modules: number;
-        }
+            enrollments?: number;
+        };
+        instructor?: {
+            id: string;
+            name: string;
+            email: string;
+        };
     };
 }
 
@@ -98,15 +106,30 @@ export function CourseCard({ course }: CourseCardProps) {
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
+                {/* Instructor Info */}
+                {course.instructor && (
+                    <div className="mb-3 pb-3 border-b">
+                        <p className="text-sm text-muted-foreground">
+                            Instructor: <span className="font-medium text-foreground">{course.instructor.name}</span>
+                        </p>
+                    </div>
+                )}
+
                 <div className="flex items-center text-sm font-medium text-muted-foreground gap-4">
                     <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded">
                         <BookOpen className="h-4 w-4" />
                         <span>{course._count?.modules || 0} Modules</span>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded">
-                        <Clock className="h-4 w-4" />
-                        <span>Self-paced</span>
-                    </div>
+                    {course.type && (
+                        <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded">
+                            <span className="text-xs">{course.type === 'LIVE' ? '🔴 Live' : '📹 Video'}</span>
+                        </div>
+                    )}
+                    {course._count?.enrollments !== undefined && (
+                        <div className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded">
+                            <span>{course._count.enrollments} students</span>
+                        </div>
+                    )}
                 </div>
             </CardContent>
             <CardFooter className="pt-4 border-t bg-muted/20">
@@ -123,7 +146,11 @@ export function CourseCard({ course }: CourseCardProps) {
                         onClick={handleEnroll}
                         disabled={loading}
                     >
-                        {loading ? "Enrolling..." : (course.price > 0 ? `Enroll ($${course.price})` : "Enroll for Free")}
+                        {loading ? "Enrolling..." : (
+                            (course.discountedPrice || course.price) > 0
+                                ? `Enroll (₹${(course.discountedPrice || course.price).toLocaleString()})`
+                                : "Enroll for Free"
+                        )}
                     </Button>
                 )}
             </CardFooter>

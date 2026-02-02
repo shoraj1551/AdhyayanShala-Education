@@ -18,9 +18,19 @@ const app: Express = express();
 const port = process.env.PORT || 3001;
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: '*', // Allow all for debugging
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(helmet());
 app.use(morgan('dev'));
+
+// Debug Middleware
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.url} | Origin: ${req.get('origin')}`);
+    next();
+});
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Shoraj Learning Platform API');

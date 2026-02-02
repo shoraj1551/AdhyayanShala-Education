@@ -50,6 +50,7 @@ export const deleteSchedule = async (scheduleId: string) => {
     });
 };
 
+
 export const getCourseCalendar = async (courseId: string) => {
     const course = await prisma.course.findUnique({
         where: { id: courseId },
@@ -59,4 +60,26 @@ export const getCourseCalendar = async (courseId: string) => {
     if (!course) throw new Error("Course not found");
 
     return generateICS(course.title, course.schedules);
+};
+
+// Helper: Auto-generate schedule note from class schedules
+export const generateScheduleNote = (schedules: Array<{ dayOfWeek: number; startTime: string }>) => {
+    if (schedules.length === 0) return '';
+
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Group by time
+    const timeGroups: { [time: string]: number[] } = {};
+    schedules.forEach(s => {
+        if (!timeGroups[s.startTime]) timeGroups[s.startTime] = [];
+        timeGroups[s.startTime].push(s.dayOfWeek);
+    });
+
+    // Format each time group
+    const parts = Object.entries(timeGroups).map(([time, dayIndices]) => {
+        const dayNames = dayIndices.sort().map(i => days[i]);
+        return `${dayNames.join(', ')} at ${time}`;
+    });
+
+    return parts.join(' | ');
 };

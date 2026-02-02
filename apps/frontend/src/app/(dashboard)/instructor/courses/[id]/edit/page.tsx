@@ -228,7 +228,7 @@ export default function CourseEditorPage() {
                     <Button variant="outline" onClick={() => window.open(`/courses/${params.id}`, '_blank')}>
                         Preview Course
                     </Button>
-                    {!course.isPublished && (
+                    {!course.isPublished ? (
                         <Button
                             className="bg-green-600 hover:bg-green-700 text-white"
                             onClick={async () => {
@@ -244,11 +244,102 @@ export default function CourseEditorPage() {
                         >
                             Publish Course
                         </Button>
+                    ) : (
+                        <Button
+                            variant="secondary"
+                            className="bg-zinc-200 hover:bg-zinc-300 text-zinc-900"
+                            onClick={async () => {
+                                if (!confirm("Unpublish this course? Students will lose access.")) return;
+                                try {
+                                    await api.post(`/courses/${course.id}/unpublish`, {}, token ?? undefined); // Need backend route
+                                    alert("Course Unpublished.");
+                                    fetchCourse();
+                                } catch (e) {
+                                    alert("Failed to unpublish");
+                                }
+                            }}
+                        >
+                            Unpublish
+                        </Button>
                     )}
                 </div>
             </div>
 
             <div className="space-y-6">
+
+                {/* Pricing Information Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>💰 Pricing Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {course.type === 'VIDEO' ? (
+                            <div>
+                                <Label>Course Price</Label>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl font-bold text-primary">₹{course.price || 0}</span>
+                                    <span className="text-sm text-muted-foreground">One-time payment</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Start Date</Label>
+                                        <Input
+                                            type="text"
+                                            value={course.startDate ? new Date(course.startDate).toLocaleDateString() : 'Not set'}
+                                            disabled
+                                            className="bg-muted"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label>End Date</Label>
+                                        <Input
+                                            type="text"
+                                            value={course.endDate ? new Date(course.endDate).toLocaleDateString() : 'Not set'}
+                                            disabled
+                                            className="bg-muted"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <Label>Total Classes</Label>
+                                        <Input value={course.totalClasses || 0} disabled className="bg-muted" />
+                                    </div>
+                                    <div>
+                                        <Label>Price Per Class</Label>
+                                        <Input value={`₹${course.pricePerClass || 0}`} disabled className="bg-muted" />
+                                    </div>
+                                    <div>
+                                        <Label>Total Price</Label>
+                                        <Input value={`₹${course.price || 0}`} disabled className="bg-muted" />
+                                    </div>
+                                </div>
+                                {course.discountedPrice && course.discountedPrice < course.price && (
+                                    <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-semibold text-green-700 dark:text-green-300">Discounted Price</p>
+                                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">₹{course.discountedPrice}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm text-green-600 dark:text-green-400">You save</p>
+                                                <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                                                    ₹{course.price - course.discountedPrice}
+                                                </p>
+                                                <p className="text-xs text-green-600 dark:text-green-400">
+                                                    ({Math.round(((course.price - course.discountedPrice) / course.price) * 100)}% OFF)
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Live Class Settings */}
                 <div className="mb-8">

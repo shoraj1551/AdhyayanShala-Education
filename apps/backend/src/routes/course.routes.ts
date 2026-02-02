@@ -7,6 +7,7 @@ import { authenticateToken, authorizeRole } from '../middleware/auth.middleware'
 const router = Router();
 
 router.post('/', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.createCourse);
+router.get('/instructor/stats', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getInstructorStats);
 router.get('/instructor', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getInstructorCourses);
 router.get('/announcements', CourseController.getAnnouncements); // Public News
 
@@ -24,9 +25,11 @@ router.put('/modules/:id', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTO
 router.get('/', CourseController.getCourses);
 
 // Dynamic Routes (ID based)
+router.get('/:id/analytics', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getCourseAnalytics);
 router.get('/:id', CourseController.getCourse);
 router.post('/:id/enroll', authenticateToken, CourseController.enrollCourse);
 router.post('/:id/publish', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.publishCourse);
+router.post('/:id/unpublish', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.unpublishCourse);
 router.get('/:id/status', authenticateToken, CourseController.getEnrollmentStatus);
 
 // Note Logic
@@ -50,4 +53,6 @@ router.delete('/live/schedule/:scheduleId', authenticateToken, authorizeRole(['A
 
 // Calendar
 router.get('/:id/calendar.ics', LiveClassController.downloadCalendar);
+
+export default router;
 

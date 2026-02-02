@@ -1,6 +1,7 @@
 
 import { Request, Response } from 'express';
 import * as CourseService from '../services/course.service';
+import * as CourseAnalyticsService from '../services/courseAnalytics.service';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { PrismaClient } from '@prisma/client';
 
@@ -9,10 +10,14 @@ const prisma = new PrismaClient();
 export const getCourses = async (req: Request, res: Response) => {
     try {
         const search = req.query.search as string | undefined;
-        const courses = await CourseService.listCourses(search);
+        // For instructors doing market research, exclude their own courses
+        const excludeInstructorId = req.query.excludeInstructor as string | undefined;
+
+        const courses = await CourseService.listCourses(search, excludeInstructorId);
         res.json(courses);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching courses' });
+        console.error('Error in getCourses:', error);
+        res.status(500).json({ message: 'Error fetching courses', error: error instanceof Error ? error.message : 'Unknown error' });
     }
 };
 
@@ -24,6 +29,33 @@ export const getInstructorCourses = async (req: AuthRequest, res: Response) => {
         res.json(courses);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching instructor courses' });
+    }
+};
+
+export const getInstructorStats = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+        const stats = await CourseService.getInstructorStats(userId);
+        res.json(stats);
+    } catch (error) {
+        console.error('[INSTRUCTOR STATS] Error:', error);
+        res.status(500).json({ message: 'Error fetching instructor stats' });
+    }
+};
+
+export const getCourseAnalytics = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const analytics = await CourseAnalyticsService.getCourseAnalytics(id, userId);
+        res.json(analytics);
+    } catch (error: any) {
+        console.error('[COURSE ANALYTICS] Error:', error);
+        res.status(error.message === 'Course not found or unauthorized' ? 404 : 500)
+            .json({ message: error.message || 'Error fetching course analytics' });
     }
 };
 
@@ -92,10 +124,20 @@ export const updateLesson = async (req: Request, res: Response) => {
 export const createCourse = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        console.log('[CREATE COURSE] Request body:', JSON.stringify(req.body, null, 2));
+        console.log('[CREATE COURSE] User ID:', userId);
+
         const result = await CourseService.createCourse({ ...req.body, instructorId: userId });
+        console.log('[CREATE COURSE] Success:', result.id);
         res.status(201).json(result);
-    } catch (error) {
-        res.status(500).json({ message: 'Error creating course' });
+    } catch (error: any) {
+        console.error('[CREATE COURSE] Error:', error);
+        res.status(500).json({
+            message: 'Error creating course',
+            error: error.message
+        });
     }
 };
 
@@ -193,6 +235,16 @@ export const publishCourse = async (req: AuthRequest, res: Response) => {
         res.json(course);
     } catch (error) {
         res.status(500).json({ message: 'Error publishing course' });
+    }
+};
+
+export const unpublishCourse = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const course = await CourseService.unpublishCourse(id);
+        res.json(course);
+    } catch (error) {
+        res.status(500).json({ message: 'Error unpublishing course' });
     }
 };
 

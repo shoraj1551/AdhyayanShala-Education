@@ -2,26 +2,45 @@
 import prisma from '../lib/prisma';
 import { CourseLevel } from '@prisma/client';
 
-export const listCourses = async (search?: string) => {
-    const where: any = { isPublished: true };
+export const listCourses = async (search?: string, excludeInstructorId?: string) => {
+    const where: any = {
+        isPublished: true,
+    };
 
     if (search) {
         where.OR = [
-            { title: { contains: search } },
-            { description: { contains: search } }
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
         ];
+    }
+
+    // Exclude instructor's own courses for market research
+    if (excludeInstructorId) {
+        where.instructorId = {
+            not: excludeInstructorId,
+        };
     }
 
     return await prisma.course.findMany({
         where,
-        include: {
+        select: {
+            id: true,
+            title: true,
+            description: true,
+            level: true,
+            price: true,
+            discountedPrice: true,
+            type: true,
+            isPublished: true,
+            createdAt: true,
             instructor: {
-                select: { name: true, email: true }
+                select: { id: true, name: true, email: true }
             },
             _count: {
-                select: { modules: true, tests: true }
+                select: { enrollments: true, modules: true }
             }
-        }
+        },
+        orderBy: { createdAt: 'desc' }
     });
 };
 
@@ -48,8 +67,31 @@ export const getCourseById = async (courseId: string) => {
 };
 
 export const createCourse = async (data: any) => {
+    // Extract and validate pricing data based on course type
+    const courseData: any = {
+        title: data.title,
+        description: data.description,
+        level: data.level || 'BEGINNER',
+        price: data.price || 0,
+        type: data.type || 'VIDEO',
+        instructorId: data.instructorId,
+        isPublished: data.isPublished !== undefined ? data.isPublished : false,
+    };
+
+    // Add LIVE course specific fields
+    if (data.type === 'LIVE') {
+        courseData.pricePerClass = data.pricePerClass || null;
+        courseData.discountedPrice = data.discountedPrice || null;
+        courseData.totalClasses = data.totalClasses || null;
+        courseData.startDate = data.startDate ? new Date(data.startDate) : null;
+        courseData.endDate = data.endDate ? new Date(data.endDate) : null;
+        courseData.meetingPlatform = data.meetingPlatform || null;
+        courseData.meetingLink = data.meetingLink || null;
+        courseData.schedule = data.schedule || null;
+    }
+
     return await prisma.course.create({
-        data
+        data: courseData
     });
 };
 
@@ -62,6 +104,42 @@ export const listInstructorCourses = async (instructorId: string) => {
             }
         }
     });
+};
+
+export const getInstructorStats = async (instructorId: string) => {
+    const courses = await prisma.course.findMany({
+        where: { instructorId },
+        include: {
+            _count: {
+                select: { enrollments: true }
+            }
+        }
+    });
+
+    const totalCourses = courses.length;
+    const publishedCourses = courses.filter(c => c.isPublished).length;
+    const totalEnrollments = courses.reduce((sum, course) => sum + course._count.enrollments, 0);
+    const totalRevenue = courses.reduce((sum, course) => {
+        const courseRevenue = course._count.enrollments * (course.discountedPrice || course.price);
+        return sum + courseRevenue;
+    }, 0);
+
+    const coursesWithStats = courses.map(course => ({
+        id: course.id,
+        title: course.title,
+        enrollmentCount: course._count.enrollments,
+        price: course.discountedPrice || course.price,
+        isPublished: course.isPublished,
+        type: course.type,
+    }));
+
+    return {
+        totalCourses,
+        publishedCourses,
+        totalEnrollments,
+        totalRevenue,
+        courses: coursesWithStats,
+    };
 };
 
 export const addModule = async (courseId: string, title: string) => {
@@ -215,6 +293,13 @@ export const publishCourse = async (courseId: string) => {
     }
 
     return course;
+};
+
+export const unpublishCourse = async (courseId: string) => {
+    return await prisma.course.update({
+        where: { id: courseId },
+        data: { isPublished: false }
+    });
 };
 
 export const listAnnouncements = async () => {

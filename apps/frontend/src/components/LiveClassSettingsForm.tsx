@@ -44,8 +44,9 @@ export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
     const fetchSettings = async () => {
         try {
             const res = await api.get(`/courses/${courseId}/live`);
-            if (res.data.settings) setSettings(res.data.settings);
-            if (res.data.schedules) setSchedules(res.data.schedules);
+            // Backend now returns { data: { settings, schedules } }
+            if (res.data?.settings) setSettings(res.data.settings);
+            if (res.data?.schedules) setSchedules(res.data.schedules);
         } catch (error) {
             console.error(error);
         } finally {
@@ -125,10 +126,16 @@ export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
                     <div className="space-y-2">
                         <Label>Schedule Note</Label>
                         <Input
-                            placeholder="e.g. Mon, Wed, Fri at 8 PM IST"
+                            placeholder="Auto-generated from Class Schedule below"
                             value={settings.scheduleNote || ''}
                             onChange={(e) => setSettings({ ...settings, scheduleNote: e.target.value })}
+                            disabled={schedules.length > 0}
                         />
+                        {schedules.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                ✨ Auto-generated from your Class Schedule. Clear all schedules to edit manually.
+                            </p>
+                        )}
                     </div>
 
                     <Button onClick={handleSaveSettings}>Save Settings</Button>

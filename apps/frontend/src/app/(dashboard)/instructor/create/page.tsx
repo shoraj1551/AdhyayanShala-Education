@@ -36,6 +36,11 @@ export default function CreateCoursePage() {
         description: "",
         level: "BEGINNER",
         price: 0,
+        pricePerClass: 0,
+        discountedPrice: 0,
+        totalClasses: 0,
+        startDate: "",
+        endDate: "",
         isPublished: true,
         meetingPlatform: "ZOOM" as "ZOOM" | "MEET",
         meetingLink: "",
@@ -53,7 +58,24 @@ export default function CreateCoursePage() {
     };
 
     const handleSubmit = async () => {
-        if (!token) return;
+        if (!token) {
+            alert("You must be logged in to create a course");
+            return;
+        }
+
+        // Validation for LIVE courses
+        if (courseType === 'LIVE') {
+            const live = formData as typeof liveData;
+            if (!live.startDate || !live.endDate) {
+                alert("Please set start and end dates for live classes");
+                return;
+            }
+            if (!live.totalClasses || live.totalClasses === 0) {
+                alert("Please enter the total number of classes");
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             const payload = {
@@ -61,11 +83,15 @@ export default function CreateCoursePage() {
                 type: courseType
             };
 
+            console.log('[CREATE COURSE] Submitting:', payload);
             const response = await api.post('/courses', payload, token);
+            console.log('[CREATE COURSE] Response:', response);
+
             // Redirect to the "Curriculum Editor"
             router.push(`/instructor/courses/${response.id}/edit`);
-        } catch (error) {
-            alert("Failed to create course. Ensure you are an Instructor.");
+        } catch (error: any) {
+            console.error('[CREATE COURSE] Error:', error);
+            alert(`Failed to create course: ${error.response?.data?.message || error.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
@@ -206,25 +232,122 @@ export default function CreateCoursePage() {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label>Difficulty Level</Label>
-                            <Select
-                                value={formData.level}
-                                onValueChange={(val) => setFormData({ ...formData, level: val })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Level" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="BEGINNER">Beginner (No experience)</SelectItem>
-                                    <SelectItem value="INTERMEDIATE">Intermediate (Basic knowledge)</SelectItem>
-                                    <SelectItem value="ADVANCED">Advanced (Deep dive)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        {/* Price moved to "Pricing" step later in wizards */}
+                    <div className="space-y-2">
+                        <Label>Difficulty Level</Label>
+                        <Select
+                            value={formData.level}
+                            onValueChange={(val) => setFormData({ ...formData, level: val })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="BEGINNER">Beginner (No experience)</SelectItem>
+                                <SelectItem value="INTERMEDIATE">Intermediate (Basic knowledge)</SelectItem>
+                                <SelectItem value="ADVANCED">Advanced (Deep dive)</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
+
+                    {/* Pricing Section - Different for VIDEO vs LIVE */}
+                    {courseType === "VIDEO" ? (
+                        <div className="space-y-2">
+                            <Label>Course Price (₹)</Label>
+                            <Input
+                                type="number"
+                                value={formData.price}
+                                onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                                placeholder="e.g. 2999"
+                            />
+                            <p className="text-xs text-muted-foreground">One-time payment for lifetime access</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-dashed border-primary/20 animate-in fade-in">
+                            <h4 className="font-semibold text-sm">Pricing & Schedule</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Start Date *</Label>
+                                    <Input
+                                        type="date"
+                                        value={(formData as typeof liveData).startDate}
+                                        onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>End Date *</Label>
+                                    <Input
+                                        type="date"
+                                        value={(formData as typeof liveData).endDate}
+                                        onChange={e => setFormData({ ...formData, endDate: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Total Classes</Label>
+                                    <Input
+                                        type="number"
+                                        value={(formData as typeof liveData).totalClasses}
+                                        onChange={e => {
+                                            const classes = parseInt(e.target.value, 10);
+                                            const perClass = (formData as typeof liveData).pricePerClass ?? 0;
+                                            setFormData({
+                                                ...formData,
+                                                totalClasses: isNaN(classes) ? 0 : classes,
+                                                price: isNaN(classes) ? 0 : classes * perClass
+                                            });
+                                        }}
+                                        placeholder="e.g. 20"
+                                        min="0"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Price Per Class (₹)</Label>
+                                    <Input
+                                        type="number"
+                                        value={(formData as typeof liveData).pricePerClass}
+                                        onChange={e => {
+                                            const perClass = parseFloat(e.target.value);
+                                            const classes = (formData as typeof liveData).totalClasses ?? 0;
+                                            setFormData({
+                                                ...formData,
+                                                pricePerClass: isNaN(perClass) ? 0 : perClass,
+                                                price: isNaN(perClass) ? 0 : classes * perClass
+                                            });
+                                        }}
+                                        placeholder="e.g. 500"
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Total Price (₹)</Label>
+                                    <Input
+                                        type="number"
+                                        value={formData.price}
+                                        disabled
+                                        className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground">Auto-calculated</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Discounted Price (₹) - Optional</Label>
+                                    <Input
+                                        type="number"
+                                        value={(formData as typeof liveData).discountedPrice}
+                                        onChange={e => setFormData({ ...formData, discountedPrice: parseFloat(e.target.value) || 0 })}
+                                        placeholder="e.g. 8000"
+                                    />
+                                </div>
+                            </div>
+                            {(formData as typeof liveData).discountedPrice > 0 && (formData as typeof liveData).discountedPrice < formData.price && (
+                                <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                                    <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                                        💰 Discount: ₹{formData.price - (formData as typeof liveData).discountedPrice} OFF
+                                        ({Math.round(((formData.price - (formData as typeof liveData).discountedPrice) / formData.price) * 100)}% savings)
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </CardContent>
                 <CardFooter className="flex justify-end border-t pt-6">
                     <Button

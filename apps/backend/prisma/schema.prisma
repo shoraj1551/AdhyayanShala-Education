@@ -90,7 +90,12 @@ model Course {
   description   String?
   level         CourseLevel @default(BEGINNER)
   prerequisites String?  // JSON or text list of prereqs
-  price         Float    @default(0)
+  price         Float    @default(0)  // Total price (VIDEO) or calculated total (LIVE)
+  pricePerClass Float?   // Only for LIVE courses
+  discountedPrice Float? // Optional discounted total for LIVE courses
+  totalClasses  Int?     // Number of classes for LIVE courses
+  startDate     DateTime? // Course start date (required for LIVE)
+  endDate       DateTime? // Course end date (required for LIVE)
   isPublished   Boolean  @default(false)
   publishedAt   DateTime? // When it was first published
   

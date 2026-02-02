@@ -83,6 +83,7 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
     try {
+        console.log('[LOGIN] Attempt for email:', req.body.email);
         const validatedData = loginSchema.parse(req.body);
 
         const user = await prisma.user.findUnique({
@@ -90,15 +91,19 @@ export const login = async (req: Request, res: Response) => {
         });
 
         if (!user) {
+            console.log('[LOGIN] User not found:', validatedData.email);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
+        console.log('[LOGIN] User found:', user.email, 'Role:', user.role);
         const isPasswordValid = await bcrypt.compare(validatedData.password, user.password);
 
         if (!isPasswordValid) {
+            console.log('[LOGIN] Invalid password for:', user.email);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
+        console.log('[LOGIN] Login successful for:', user.email);
         const token = jwt.sign(
             { userId: user.id, role: user.role },
             JWT_SECRET,
@@ -116,6 +121,7 @@ export const login = async (req: Request, res: Response) => {
             },
         });
     } catch (error) {
+        console.error('[LOGIN] Error:', error);
         if (error instanceof z.ZodError) {
             return res.status(400).json({ message: 'Validation error', errors: (error as any).errors });
         }
