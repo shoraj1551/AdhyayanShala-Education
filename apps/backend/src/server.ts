@@ -104,6 +104,10 @@ app.use('/api/admin/analytics', adminAnalyticsRoutes);
 // Error Handler - Must be last middleware
 app.use(errorHandler);
 
-app.listen(port, () => {
-    Logger.info(`⚡️[server]: Server is running at http://localhost:${port}`);
-});
+if (!process.env.VERCEL) {
+    app.listen(port, () => {
+        Logger.info(`⚡️[server]: Server is running at http://localhost:${port}`);
+    });
+}
+
+export default app;
