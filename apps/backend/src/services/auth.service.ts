@@ -2,14 +2,43 @@ import prisma from '../lib/prisma';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env.config';
+import crypto from 'node:crypto';
 
-export const registerUser = async (data: any) => {
+import { Role } from '@prisma/client';
+
+interface RegisterUserDTO {
+    email: string;
+    password: string;
+    name?: string;
+    role: Role;
+    bio?: string;
+    expertise?: string;
+    experience?: string;
+    linkedin?: string;
+    currentStatus?: string;
+    interests?: string;
+}
+
+interface LoginUserDTO {
+    email: string;
+    password: string;
+}
+
+export const registerUser = async (data: RegisterUserDTO) => {
     const existingUser = await prisma.user.findUnique({
         where: { email: data.email },
     });
 
     if (existingUser) {
         throw new Error('User already exists');
+    }
+
+    // Password strength validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(data.password)) {
+        throw new Error(
+            'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
+        );
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -39,7 +68,7 @@ export const registerUser = async (data: any) => {
     return { user, token };
 };
 
-export const loginUser = async (data: any) => {
+export const loginUser = async (data: LoginUserDTO) => {
     const user = await prisma.user.findUnique({
         where: { email: data.email },
     });
@@ -58,8 +87,8 @@ export const loginUser = async (data: any) => {
 };
 
 export const generateAdminOTP = async (userId: string, email: string) => {
-    // Generate Random 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate cryptographically secure 6-digit OTP
+    const otp = crypto.randomInt(100000, 1000000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     await prisma.user.update({
@@ -106,9 +135,10 @@ export const verifyAdminOTP = async (userId: string, otp: string) => {
 };
 
 export const createGuestSession = async () => {
-    const suffix = Math.random().toString(36).substring(7);
-    const email = `guest_${Date.now()}_${suffix}@shoraj.com`;
-    const password = Math.random().toString(36).substring(2, 15);
+    // Use crypto.randomUUID() for unpredictable guest email
+    const guestId = crypto.randomUUID();
+    const email = `guest_${guestId}@shoraj.com`;
+    const password = crypto.randomBytes(16).toString('hex');
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -129,7 +159,7 @@ export const createGuestSession = async () => {
     return { user, token };
 };
 
-export const generateToken = (user: any) => {
+export const generateToken = (user: { id: string, role: string }) => {
     return jwt.sign(
         { id: user.id, role: user.role },
         config.JWT_SECRET,

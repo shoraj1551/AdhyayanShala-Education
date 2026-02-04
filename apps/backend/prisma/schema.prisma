@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -140,6 +140,7 @@ model Course {
   publishedAt   DateTime? // When it was first published
   
   // New Fields for Live Classes
+  maxStudents     Int?     // Max enrollment limit for LIVE courses
   type            String   @default("VIDEO") // VIDEO or LIVE
   meetingPlatform String?  // ZOOM, MEET
   meetingLink     String?

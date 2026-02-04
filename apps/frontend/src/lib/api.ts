@@ -1,4 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001/api';
+// API URL Configuration - Fail-fast if missing in production
+const API_URL = process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:3001/api' : '');
+
+if (!API_URL) {
+    throw new Error('NEXT_PUBLIC_API_URL environment variable is required in production');
+}
+
 
 export const api = {
     get: async (url: string, token?: string) => {

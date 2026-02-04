@@ -3,11 +3,17 @@ import crypto from 'crypto';
 import * as CourseService from './course.service';
 
 import { config } from '../config/env.config';
+import Logger from '../lib/logger';
 
-const razorpay = new Razorpay({
-    key_id: config.RAZORPAY_KEY_ID || '',
-    key_secret: config.RAZORPAY_KEY_SECRET || ''
-});
+
+// Lazy Init to prevent startup crash if keys are missing (e.g. in Dev/Mock mode)
+let razorpay: any;
+if (config.RAZORPAY_KEY_ID && config.RAZORPAY_KEY_SECRET) {
+    razorpay = new Razorpay({
+        key_id: config.RAZORPAY_KEY_ID,
+        key_secret: config.RAZORPAY_KEY_SECRET
+    });
+}
 
 export const createOrder = async (courseId: string, plan: string, amount: number) => {
     // Amount fits format (paise for INR)
@@ -23,11 +29,13 @@ export const createOrder = async (courseId: string, plan: string, amount: number
 
     try {
         if (config.ENABLE_MOCK_PAYMENTS) throw new Error("Mock Mode Enabled");
+
+        if (!razorpay) throw new Error("Razorpay Not Configured");
         const order = await razorpay.orders.create(options);
         return order;
     } catch (error) {
         if (config.ENABLE_MOCK_PAYMENTS) {
-            console.warn("⚠️ Using MOCK Payment Implementation (Feature Flag ENABLED)");
+            Logger.warn('[Payment] Using MOCK Payment Implementation (Feature Flag ENABLED)');
             return {
                 id: `order_mock_${Date.now()}`,
                 entity: 'order',
@@ -41,7 +49,7 @@ export const createOrder = async (courseId: string, plan: string, amount: number
                 created_at: Math.floor(Date.now() / 1000)
             };
         }
-        console.error("Razorpay Create Order Error:", error);
+        Logger.error('[Payment] Razorpay Create Order Error', { error });
         throw error; // Fail fast in production
     }
 };
@@ -93,7 +101,7 @@ export const verifyPayment = async (
 
     // Handle Mock Payment Verification
     if (razorpay_order_id.startsWith('order_mock_')) {
-        console.log(`[MOCK] Payment Verified for User ${userId} Course ${courseId}`);
+        Logger.info('[Payment] Mock payment verified', { userId, courseId });
         const isEnrolled = await CourseService.checkEnrollment(userId, courseId);
         if (!isEnrolled) {
             await CourseService.enrollUserInCourse(userId, courseId);
@@ -120,7 +128,7 @@ export const verifyPayment = async (
         .digest('hex');
 
     if (generated_signature === razorpay_signature) {
-        console.log(`Payment Verified for User ${userId} Course ${courseId}. PaymentId: ${razorpay_payment_id}`);
+        Logger.info('[Payment] Payment verified successfully', { userId, courseId, paymentId: razorpay_payment_id });
 
         const isEnrolled = await CourseService.checkEnrollment(userId, courseId);
         if (!isEnrolled) {

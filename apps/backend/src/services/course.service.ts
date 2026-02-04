@@ -1,18 +1,17 @@
 
 import prisma from '../lib/prisma';
-import { CourseLevel } from '@prisma/client';
+import { Prisma, CourseLevel } from '@prisma/client';
+import Logger from '../lib/logger';
 
 export const listCourses = async (search?: string, excludeInstructorId?: string) => {
-    const where: any = {
+    const where: Prisma.CourseWhereInput = {
         isPublished: true,
     };
 
-    if (search) {
-        where.OR = [
-            { title: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-        ];
-    }
+    where.OR = [
+        { title: { contains: search } },
+        { description: { contains: search } },
+    ];
 
     // Exclude instructor's own courses for market research
     if (excludeInstructorId) {
@@ -54,8 +53,8 @@ export const getCourseById = async (courseId: string) => {
             modules: {
                 orderBy: { order: 'asc' },
                 include: {
-                    lessons: true,
-                    tests: true
+                    lessons: { orderBy: { order: 'asc' } },
+                    tests: { orderBy: { order: 'asc' } }
                 }
             },
             tests: true,
@@ -66,29 +65,49 @@ export const getCourseById = async (courseId: string) => {
     });
 };
 
-export const createCourse = async (data: any) => {
+interface CreateCourseDTO {
+    title: string;
+    description: string;
+    level?: CourseLevel;
+    price?: number;
+    type?: 'VIDEO' | 'LIVE' | 'TEXT';
+    instructorId: string;
+    isPublished?: boolean;
+    // Live Course specifics
+    pricePerClass?: number;
+    discountedPrice?: number;
+    totalClasses?: number;
+    startDate?: Date | string;
+    endDate?: Date | string;
+    meetingPlatform?: string;
+    meetingLink?: string;
+    schedule?: any; // Keep any for JSON/Complex object if structure is variable, or define strict schedule type if possible. Let's keep strict check but allow flexible schedule for now or defined interface.
+    maxStudents?: number;
+}
+
+export const createCourse = async (data: CreateCourseDTO) => {
     // Extract and validate pricing data based on course type
-    const courseData: any = {
+    // Using explicit object construction to satisfy Prisma types
+    const courseData: Prisma.CourseCreateInput = {
         title: data.title,
         description: data.description,
         level: data.level || 'BEGINNER',
         price: data.price || 0,
         type: data.type || 'VIDEO',
-        instructorId: data.instructorId,
-        isPublished: data.isPublished !== undefined ? data.isPublished : false,
-    };
+        isPublished: data.isPublished ?? false,
+        instructor: { connect: { id: data.instructorId } },
 
-    // Add LIVE course specific fields
-    if (data.type === 'LIVE') {
-        courseData.pricePerClass = data.pricePerClass || null;
-        courseData.discountedPrice = data.discountedPrice || null;
-        courseData.totalClasses = data.totalClasses || null;
-        courseData.startDate = data.startDate ? new Date(data.startDate) : null;
-        courseData.endDate = data.endDate ? new Date(data.endDate) : null;
-        courseData.meetingPlatform = data.meetingPlatform || null;
-        courseData.meetingLink = data.meetingLink || null;
-        courseData.schedule = data.schedule || null;
-    }
+        // Live Course specifics (Defaulting to undefined or null appropriately for optional fields)
+        pricePerClass: data.type === 'LIVE' ? data.pricePerClass : undefined,
+        discountedPrice: data.type === 'LIVE' ? data.discountedPrice : undefined,
+        totalClasses: data.type === 'LIVE' ? data.totalClasses : undefined,
+        startDate: data.type === 'LIVE' && data.startDate ? new Date(data.startDate) : undefined,
+        endDate: data.type === 'LIVE' && data.endDate ? new Date(data.endDate) : undefined,
+        meetingPlatform: data.type === 'LIVE' ? data.meetingPlatform : undefined,
+        meetingLink: data.type === 'LIVE' ? data.meetingLink : undefined,
+        schedule: data.type === 'LIVE' && data.schedule ? data.schedule : undefined,
+        maxStudents: data.type === 'LIVE' ? data.maxStudents : undefined,
+    };
 
     return await prisma.course.create({
         data: courseData
@@ -285,9 +304,16 @@ export const updateLesson = async (id: string, data: {
 };
 
 export const enrollUserInCourse = async (userId: string, courseId: string) => {
-    // Check if valid course
-    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    // Check if valid course and check max enrollments
+    const course = await prisma.course.findUnique({
+        where: { id: courseId },
+        include: { _count: { select: { enrollments: true } } }
+    });
     if (!course) throw new Error("Course not found");
+
+    if (course.maxStudents && course._count.enrollments >= course.maxStudents) {
+        throw new Error("Course is full");
+    }
 
     // Check existing enrollment
     const existing = await prisma.enrollment.findFirst({
@@ -325,7 +351,7 @@ export const unpublishCourseWithOTP = async (courseId: string, userId: string, o
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new Error("User not found");
 
-    console.log(`[Unpublish] CourseId: ${courseId}, UserId: ${userId}, Role: ${user.role}, Enrollments: ${course._count.enrollments}`);
+    Logger.info(`[Unpublish] CourseId: ${courseId}, UserId: ${userId}, Role: ${user.role}, Enrollments: ${course._count.enrollments}`);
 
     if (course.instructorId !== userId && user.role !== 'ADMIN') {
         throw new Error("Unauthorized");
@@ -486,7 +512,7 @@ export const generateDeleteOTP = async (courseId: string, userId: string) => {
     });
 
     // MOCK EMAIL SENDER
-    console.log(`[MOCK EMAIL] OTP for Course Deletion: ${otp} for User ${userId}`);
+    Logger.info(`[MOCK EMAIL] OTP for Course Deletion: ${otp} for User ${userId}`);
 
     return { message: "OTP sent to your email (Check console)" };
 };
@@ -523,52 +549,50 @@ export const deleteCourseWithOTP = async (courseId: string, userId: string, otp?
         if (!user.deleteOtpExpires || new Date() > user.deleteOtpExpires) throw new Error("OTP Expired");
     }
 
-    // 3. Proceed to delete (Granular Cleanup)
+    // 3. Proceed to delete (Granular Cleanup - Batch Optimized)
 
-    // A. Cleanup Modules & Lessons
-    const modules = await prisma.module.findMany({
-        where: { courseId },
-        include: { lessons: true }
-    });
+    // A. Cleanup Modules, Lessons, Progress, Comments, Notes
+    const modules = await prisma.module.findMany({ where: { courseId }, select: { id: true } });
+    const moduleIds = modules.map(m => m.id);
 
-    for (const m of modules) {
-        // Delete Lesson Progress first
-        const lessonIds = m.lessons.map(l => l.id);
+    if (moduleIds.length > 0) {
+        const lessons = await prisma.lesson.findMany({ where: { moduleId: { in: moduleIds } }, select: { id: true } });
+        const lessonIds = lessons.map(l => l.id);
+
         if (lessonIds.length > 0) {
-            await prisma.lessonProgress.deleteMany({
-                where: { lessonId: { in: lessonIds } }
-            });
+            // Delete dependencies of Lessons
+            await prisma.lessonProgress.deleteMany({ where: { lessonId: { in: lessonIds } } });
+            await prisma.lessonComment.deleteMany({ where: { lessonId: { in: lessonIds } } });
+
+            // Notes have Cascade usually, but safe to delete explicit if unsure of schema history
+            // Standardizing manual delete to ensure consistency
+            await prisma.note.deleteMany({ where: { lessonId: { in: lessonIds } } });
+
             // Delete Lessons
-            await prisma.lesson.deleteMany({
-                where: { moduleId: m.id }
-            });
+            await prisma.lesson.deleteMany({ where: { moduleId: { in: moduleIds } } });
         }
-        // Delete Module
-        await prisma.module.delete({ where: { id: m.id } });
+        // Delete Modules
+        await prisma.module.deleteMany({ where: { courseId } });
     }
 
     // B. Cleanup Tests (Questions, Options, Attempts)
-    const tests = await prisma.test.findMany({
-        where: { courseId },
-        include: { questions: true }
-    });
+    const tests = await prisma.test.findMany({ where: { courseId }, select: { id: true } });
+    const testIds = tests.map(t => t.id);
 
-    for (const t of tests) {
+    if (testIds.length > 0) {
         // Delete Attempts
-        await prisma.attempt.deleteMany({ where: { testId: t.id } });
+        await prisma.attempt.deleteMany({ where: { testId: { in: testIds } } });
 
         // Delete Questions & Options
-        const questionIds = t.questions.map(q => q.id);
+        const questions = await prisma.question.findMany({ where: { testId: { in: testIds } }, select: { id: true } });
+        const questionIds = questions.map(q => q.id);
+
         if (questionIds.length > 0) {
-            await prisma.option.deleteMany({
-                where: { questionId: { in: questionIds } }
-            });
-            await prisma.question.deleteMany({
-                where: { testId: t.id }
-            });
+            await prisma.option.deleteMany({ where: { questionId: { in: questionIds } } });
+            await prisma.question.deleteMany({ where: { testId: { in: testIds } } });
         }
-        // Delete Test
-        await prisma.test.deleteMany({ where: { id: t.id } });
+        // Delete Tests
+        await prisma.test.deleteMany({ where: { courseId } });
     }
 
     // C. Cleanup Reviews
@@ -577,7 +601,14 @@ export const deleteCourseWithOTP = async (courseId: string, userId: string, otp?
     // D. Cleanup Enrollments
     await prisma.enrollment.deleteMany({ where: { courseId } });
 
-    // E. Delete Course
+    // E. Cleanup Payments (Required for Hard Delete due to FK)
+    await prisma.payment.deleteMany({ where: { courseId } });
+
+    // F. Cleanup EarningLedgers (If linked)
+    // Checking schema... EarningsLedger has courseId? Yes.
+    await prisma.earningsLedger.deleteMany({ where: { courseId } });
+
+    // G. Delete Course
     await prisma.course.delete({ where: { id: courseId } });
 
     // Clear OTP

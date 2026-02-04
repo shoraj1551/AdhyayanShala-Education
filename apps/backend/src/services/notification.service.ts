@@ -1,8 +1,9 @@
 
 import prisma from '../lib/prisma';
+import Logger from '../lib/logger';
 
 export const sendClassReminder = async (courseId: string, minutesBefore: number) => {
-    console.log(`[NotificationJob] Checking reminders for Course ${courseId} - ${minutesBefore}m before class`);
+    Logger.info(`[NotificationJob] Checking reminders for Course ${courseId} - ${minutesBefore}m before class`);
 
     const enrollments = await prisma.enrollment.findMany({
         where: { courseId },
@@ -21,12 +22,15 @@ export const sendClassReminder = async (courseId: string, minutesBefore: number)
 
             // Mock SMS
             if (enrollment.notifySMS && enrollment.user.phoneNumber) {
-                console.log(`[SMS] Sending to ${enrollment.user.phoneNumber}: ${message}`);
+                const maskedPhone = enrollment.user.phoneNumber.replace(/.(?=.{4})/g, '*');
+                Logger.info(`[SMS] Sending to ${maskedPhone}: ${message}`);
             }
 
             // Mock Email
             if (enrollment.notifyEmail) {
-                console.log(`[Email] Sending to ${enrollment.user.email}: ${message}`);
+                const [local, domain] = enrollment.user.email.split('@');
+                const maskedEmail = `${local.substring(0, 2)}***@${domain}`;
+                Logger.info(`[Email] Sending to ${maskedEmail}: ${message}`);
             }
 
             // In-App Notification

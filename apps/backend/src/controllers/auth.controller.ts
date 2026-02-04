@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as AuthService from '../services/auth.service';
 import { config } from '../config/env.config';
+import Logger from '../lib/logger';
 
 // Validation Schemas
 const registerSchema = z.object({
@@ -48,21 +49,22 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
     try {
-        console.log('[LOGIN] Attempt for email:', req.body.email);
+        Logger.info(`[LOGIN] Attempt for email: ${req.body.email}`);
         const validatedData = loginSchema.parse(req.body);
 
         const user = await AuthService.loginUser(validatedData);
 
-        console.log('[LOGIN] User found:', user.email, 'Role:', user.role);
+        Logger.info(`[LOGIN] User found: ${user.email}, Role: ${user.role}`);
 
+        // ...
         // 2FA FOR ADMIN
         if (user.role === 'ADMIN') {
             const otp = await AuthService.generateAdminOTP(user.id, user.email);
 
             if (config.NODE_ENV === 'development') {
-                console.log(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}: ${otp}`);
+                Logger.info(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}: ${otp}`);
             } else {
-                console.log(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}`);
+                Logger.info(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}`);
                 // TODO: Integrate Email Service here
             }
 
@@ -74,7 +76,7 @@ export const login = async (req: Request, res: Response) => {
             });
         }
 
-        console.log('[LOGIN] Login successful for:', user.email);
+        Logger.info(`[LOGIN] Login successful for: ${user.email}`);
         const token = AuthService.generateToken(user);
 
         res.json({
@@ -88,7 +90,9 @@ export const login = async (req: Request, res: Response) => {
             },
         });
     } catch (error: any) {
-        console.error('[LOGIN] Error:', error);
+        Logger.error('[LOGIN] Error:', error);
+        // ...
+
         if (error instanceof z.ZodError) {
             return res.status(400).json({ message: 'Validation error', errors: (error as any).errors });
         }
@@ -113,7 +117,7 @@ export const verifyLoginOtp = async (req: Request, res: Response) => {
         });
 
     } catch (error: any) {
-        console.error('[OTP VERIFY] Error:', error);
+        Logger.error('[OTP VERIFY] Error:', error);
         res.status(400).json({ message: error.message || 'Error verifying OTP' });
     }
 };

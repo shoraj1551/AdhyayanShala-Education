@@ -11,15 +11,21 @@ const envSchema = z.object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
     // Security
-    JWT_SECRET: z.string().min(10, "JWT_SECRET must be at least 10 characters long"),
+    JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long for production security"),
     FRONTEND_URL: z.string().url().default('http://localhost:3000'),
 
     // Database
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
     // External Services
-    RAZORPAY_KEY_ID: z.string().optional(),
-    RAZORPAY_KEY_SECRET: z.string().optional(),
+    RAZORPAY_KEY_ID: z.string().optional().refine(
+        val => process.env.NODE_ENV !== 'production' || (val && val.length > 0),
+        'RAZORPAY_KEY_ID is required in production'
+    ),
+    RAZORPAY_KEY_SECRET: z.string().optional().refine(
+        val => process.env.NODE_ENV !== 'production' || (val && val.length > 0),
+        'RAZORPAY_KEY_SECRET is required in production'
+    ),
 
     // Feature Flags
     ENABLE_MOCK_PAYMENTS: z.string().default('false').transform(val => val === 'true'),
