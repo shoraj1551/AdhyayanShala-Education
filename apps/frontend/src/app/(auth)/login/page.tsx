@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,11 @@ import { toast } from "sonner"; // Assuming sonner is set up as per previous con
 
 function LoginForm() {
     const searchParams = useSearchParams();
+    const router = useRouter(); // Import might be needed if not present
     const role = searchParams.get("role");
 
     // Capitalize role for display
     const displayRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
-    const isSecurityRequired = role === "instructor" || role === "admin";
 
     const [identifier, setIdentifier] = useState(""); // Email or Mobile
     const [password, setPassword] = useState("");
@@ -28,68 +28,60 @@ function LoginForm() {
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
-    // OTP Logic
-    const [otpSent, setOtpSent] = useState(false);
-    const [otpTimer, setOtpTimer] = useState(0);
-    const [isSendingOtp, setIsSendingOtp] = useState(false);
+    // 2FA State
+    const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
+    const [tempUserId, setTempUserId] = useState("");
 
     const { login } = useAuth();
-
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (otpTimer > 0) {
-            interval = setInterval(() => {
-                setOtpTimer((prev) => prev - 1);
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [otpTimer]);
-
-    const handleSendOtp = () => {
-        if (!identifier) {
-            setError("Please enter your Email or Mobile Number first.");
-            return;
-        }
-        setError("");
-        setIsSendingOtp(true);
-
-        // Simulate API call
-        setTimeout(() => {
-            setIsSendingOtp(false);
-            setOtpSent(true);
-            setOtpTimer(30); // 30 seconds cooldown
-            toast.success("OTP Sent!", {
-                description: "Use code 123456 to verify (Demo Mode)."
-            });
-            // Pre-fill for convenience if desired, or just let them type it.
-            // setOtp("123456"); 
-        }, 1500);
-    };
+    // useRouter imported at top would be needed if not globally imported?
+    // It seems missing in original partial context, checking imports.
+    // Original file imports: import { useParams, useRouter } from "next/navigation"; -- wait, original file didn't have useRouter in imports shown in view_file.
+    // It imported from next/navigation: useSearchParams. I should add useRouter if I need to redirect manually, but useAuth likely handles it?
+    // useAuth login usually redirects.
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         setIsLoading(true);
 
-        if (isSecurityRequired && !otp) {
-            setError("Security Code (OTP) is required for " + displayRole + " login.");
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            const payload = {
-                email: identifier, // Backend expects 'email'
-                password,
-                role, // Backend might ignore this but good for context if updated later
-                ...(isSecurityRequired && { otp })
-            };
+            if (step === 'credentials') {
+                const payload = {
+                    email: identifier,
+                    password,
+                    role,
+                };
 
-            const res = await api.post("/auth/login", payload);
-            login(res.token, res.user);
+                const res = await api.post("/auth/login", payload);
+
+                if (res.otpRequired && res.userId) {
+                    setTempUserId(res.userId);
+                    setStep('otp');
+                    toast.success(res.message || "OTP sent to your email.");
+                    // For demo/dev convenience, if the backend sent the OTP in response (it didn't in my code), we could autofill. 
+                    // But backend logs it. User can see console or just check the simplified logic.
+                } else {
+                    login(res.token, res.user);
+                }
+            } else {
+                // Verify OTP Step
+                if (!otp || otp.length < 6) {
+                    setError("Please enter a valid 6-digit OTP.");
+                    setIsLoading(false);
+                    return;
+                }
+
+                const payload = {
+                    userId: tempUserId,
+                    otp
+                };
+
+                const res = await api.post("/auth/login/verify-otp", payload);
+                login(res.token, res.user);
+            }
+
         } catch (err: any) {
             console.error("Login error:", err);
-            // Prioritize specific validation errors (Zod)
             if (err.data?.errors && Array.isArray(err.data.errors)) {
                 setError(err.data.errors.map((e: any) => e.message).join(", "));
             } else if (err.data?.message) {
@@ -128,98 +120,85 @@ function LoginForm() {
                     </div>
                 </div>
                 <CardTitle className="text-2xl font-bold tracking-tight text-white">
-                    {displayRole ? `${displayRole} Login` : "Welcome back"}
+                    {step === 'otp' ? "Two-Factor Authentication" : (displayRole ? `${displayRole} Login` : "Welcome back")}
                 </CardTitle>
                 <CardDescription className="text-zinc-400">
-                    {isSecurityRequired
-                        ? "Enter your credentials and security code."
+                    {step === 'otp'
+                        ? "Enter the 6-digit code sent to your email."
                         : "Enter your credentials to access your account."}
                 </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="identifier" className="text-zinc-300">Email or Mobile Number</Label>
-                        <Input
-                            id="identifier"
-                            placeholder="name@example.com or 9876543210"
-                            type="text"
-                            autoCapitalize="none"
-                            autoComplete="username"
-                            autoCorrect="off"
-                            disabled={isLoading}
-                            value={identifier}
-                            onChange={(e) => setIdentifier(e.target.value)}
-                            className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="password" className="text-zinc-300">Password</Label>
-                        <div className="relative">
-                            <Input
-                                id="password"
-                                placeholder="••••••••"
-                                type={showPassword ? "text" : "password"}
-                                autoCapitalize="none"
-                                autoComplete="current-password"
-                                disabled={isLoading}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary pr-10"
-                            />
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-zinc-500 hover:text-zinc-300"
-                                onClick={() => setShowPassword(!showPassword)}
-                            >
-                                {showPassword ? (
-                                    <EyeOff className="h-4 w-4" />
-                                ) : (
-                                    <Eye className="h-4 w-4" />
-                                )}
-                                <span className="sr-only">Toggle password visibility</span>
-                            </Button>
-                        </div>
-                    </div>
 
-                    {isSecurityRequired && (
-                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="otp" className="text-zinc-300">Security Code (OTP)</Label>
-                                {otpSent && <span className="text-xs text-emerald-400">OTP Sent!</span>}
-                            </div>
-
-                            <div className="relative flex gap-2">
+                    {step === 'credentials' && (
+                        <>
+                            <div className="space-y-2">
+                                <Label htmlFor="identifier" className="text-zinc-300">Email Address</Label>
                                 <Input
-                                    id="otp"
-                                    placeholder="123456"
+                                    id="identifier"
+                                    placeholder="name@example.com"
                                     type="text"
-                                    maxLength={6}
-                                    pattern="[0-9]*"
-                                    inputMode="numeric"
+                                    autoCapitalize="none"
+                                    autoComplete="username"
+                                    autoCorrect="off"
                                     disabled={isLoading}
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
-                                    className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary tracking-widest text-center font-mono"
+                                    value={identifier}
+                                    onChange={(e) => setIdentifier(e.target.value)}
+                                    className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary"
                                 />
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="shrink-0 bg-white/10 hover:bg-white/20 text-white border-white/10"
-                                    onClick={handleSendOtp}
-                                    disabled={isSendingOtp || otpTimer > 0 || !identifier}
-                                >
-                                    {isSendingOtp ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        otpTimer > 0 ? `${otpTimer}s` : (otpSent ? "Resend" : "Send OTP")
-                                    )}
-                                </Button>
                             </div>
-                            <p className="text-[10px] text-zinc-500 text-right">
-                                {otpSent ? "Did not receive? Check spam or resend." : "Click send to verify device."}
+                            <div className="space-y-2">
+                                <Label htmlFor="password" className="text-zinc-300">Password</Label>
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        placeholder="••••••••"
+                                        type={showPassword ? "text" : "password"}
+                                        autoCapitalize="none"
+                                        autoComplete="current-password"
+                                        disabled={isLoading}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary pr-10"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-zinc-500 hover:text-zinc-300"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-4 w-4" />
+                                        ) : (
+                                            <Eye className="h-4 w-4" />
+                                        )}
+                                        <span className="sr-only">Toggle password visibility</span>
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {step === 'otp' && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <Label htmlFor="otp" className="text-zinc-300">Enter OTP</Label>
+                            <Input
+                                id="otp"
+                                placeholder="123456"
+                                type="text"
+                                maxLength={6}
+                                pattern="[0-9]*"
+                                inputMode="numeric"
+                                disabled={isLoading}
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary tracking-[0.5em] text-center text-lg font-mono"
+                                autoFocus
+                            />
+                            <p className="text-xs text-zinc-500 text-center">
+                                Please check the server logs (for demo) or your email.
                             </p>
                         </div>
                     )}
@@ -243,9 +222,22 @@ function LoginForm() {
                         {isLoading && (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         )}
-                        Sign In
+                        {step === 'credentials' ? "Next" : "Verify & Login"}
                     </Button>
+
+                    {step === 'otp' && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className="w-full text-zinc-400 hover:text-white"
+                            onClick={() => setStep('credentials')}
+                            disabled={isLoading}
+                        >
+                            Back to Login
+                        </Button>
+                    )}
                 </form>
+
 
                 <div className="relative">
                     <div className="absolute inset-0 flex items-center">

@@ -26,6 +26,9 @@ interface Course {
     type: string;
     isPublished: boolean;
     createdAt: string;
+    isEnrolled?: boolean;
+    progress?: number;
+    isCompleted?: boolean;
     instructor?: {
         id: string;
         name: string;
@@ -42,65 +45,106 @@ export default function CoursesPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [instructorFilter, setInstructorFilter] = useState<string>("all");
+    const [enrollmentFilter, setEnrollmentFilter] = useState<"all" | "enrolled" | "not-enrolled">("all");
     const [instructors, setInstructors] = useState<Array<{ id: string; name: string }>>([]);
     const { token, user } = useAuth();
 
     const isInstructor = user?.role === 'INSTRUCTOR';
 
     useEffect(() => {
-        if (token) {
-            const fetchCourses = async () => {
-                setLoading(true);
-                try {
-                    let url = '/courses';
-                    const params = new URLSearchParams();
+        const fetchCourses = async () => {
+            setLoading(true);
+            try {
+                let url = '/courses';
+                const params = new URLSearchParams();
 
-                    if (searchQuery.trim()) {
-                        params.append('search', searchQuery.trim());
-                    }
-
-                    // For instructors: exclude their own courses (market research)
-                    if (isInstructor && user?.id) {
-                        params.append('excludeInstructor', user.id);
-                    }
-
-                    if (params.toString()) {
-                        url += `?${params.toString()}`;
-                    }
-
-                    console.log('Fetching courses from:', url);
-                    const data = await api.get(url, token);
-                    setCourses(data);
-
-                    // Extract unique instructors
-                    const uniqueInstructors = Array.from(
-                        new Map(
-                            data
-                                .filter((c: Course) => c.instructor)
-                                .map((c: Course) => [c.instructor!.id, { id: c.instructor!.id, name: c.instructor!.name }])
-                        ).values()
-                    ) as Array<{ id: string; name: string }>;
-                    setInstructors(uniqueInstructors);
-                } catch (err) {
-                    console.error('Error fetching courses:', err);
-                    setCourses([]);
-                } finally {
-                    setLoading(false);
+                if (searchQuery.trim()) {
+                    params.append('search', searchQuery.trim());
                 }
-            };
 
-            const timer = setTimeout(fetchCourses, 300);
-            return () => clearTimeout(timer);
-        }
+                // For instructors: exclude their own courses (market research)
+                if (isInstructor && user?.id) {
+                    params.append('excludeInstructor', user.id);
+                }
+
+                if (params.toString()) {
+                    url += `?${params.toString()}`;
+                }
+
+                console.log('Fetching courses from:', url);
+
+                const [coursesData, enrolledData] = await Promise.all([
+                    api.get(url, token ?? undefined),
+                    token && !isInstructor ? api.get('/student/enrolled-courses', token).catch(() => []) : Promise.resolve([])
+                ]);
+
+                const enrolledMap = new Map(enrolledData.map((e: any) => [e.id, e]));
+
+                const mergedCourses = coursesData.map((c: Course) => {
+                    const enrolled = enrolledMap.get(c.id) as any;
+                    return {
+                        ...c,
+                        isEnrolled: !!enrolled,
+                        progress: enrolled?.progress || 0,
+                        isCompleted: enrolled?.progress === 100
+                    };
+                });
+
+                // Sorting Logic: Not Enrolled -> In Progress -> Completed
+                mergedCourses.sort((a: any, b: any) => {
+                    const getWeight = (c: any) => {
+                        if (!c.isEnrolled) return 0;
+                        if (c.progress < 100) return 1;
+                        return 2;
+                    };
+
+                    const weightA = getWeight(a);
+                    const weightB = getWeight(b);
+
+                    if (weightA !== weightB) return weightA - weightB;
+
+                    return 0; // Maintain original server sort (usually recency) within groups
+                });
+
+                setCourses(mergedCourses);
+
+                // Extract unique instructors
+                const uniqueInstructors = Array.from(
+                    new Map(
+                        coursesData
+                            .filter((c: Course) => c.instructor)
+                            .map((c: Course) => [c.instructor!.id, { id: c.instructor!.id, name: c.instructor!.name }])
+                    ).values()
+                ) as Array<{ id: string; name: string }>;
+                setInstructors(uniqueInstructors);
+            } catch (err) {
+                console.error('Error fetching courses:', err);
+                setCourses([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const timer = setTimeout(fetchCourses, 300);
+        return () => clearTimeout(timer);
     }, [token, searchQuery, isInstructor, user?.id]);
 
-    // Filter courses by instructor
-    const filteredCourses = instructorFilter === "all"
+    // Filter courses by instructor and enrollment status
+    let filteredCourses = instructorFilter === "all"
         ? courses
         : courses.filter(c => c.instructor?.id === instructorFilter);
 
+    // Filter by enrollment status (dropdown override)
+    if (enrollmentFilter === "enrolled") {
+        filteredCourses = filteredCourses.filter(c => c.isEnrolled);
+    } else if (enrollmentFilter === "not-enrolled") {
+        filteredCourses = filteredCourses.filter(c => !c.isEnrolled);
+    }
+
     // Separate courses by type and recency
     const liveCourses = filteredCourses.filter(c => c.type === 'LIVE');
+
+    // For "Recent", we explicitly sort by date regardless of enrollment
     const recentCourses = [...filteredCourses]
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 6);

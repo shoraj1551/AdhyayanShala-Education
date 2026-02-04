@@ -6,6 +6,7 @@ const router = Router();
 
 router.post('/register', AuthController.register);
 router.post('/login', AuthController.login);
+router.post('/login/verify-otp', AuthController.verifyLoginOtp);
 router.post('/guest', AuthController.guestLogin);
 router.get('/me', authenticateToken, AuthController.getMe);
 router.put('/profile', authenticateToken, AuthController.updateProfile);

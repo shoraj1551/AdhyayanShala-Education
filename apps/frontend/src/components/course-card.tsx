@@ -12,10 +12,11 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, CheckCircle } from "lucide-react";
+import { BookOpen, Clock, CheckCircle, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
+import { EnrollmentModal } from "@/components/EnrollmentModal";
 
 interface CourseCardProps {
     course: {
@@ -26,6 +27,8 @@ interface CourseCardProps {
         price: number;
         discountedPrice?: number;
         type?: string;
+        isEnrolled?: boolean;
+        isCompleted?: boolean;
         _count?: {
             modules: number;
             enrollments?: number;
@@ -41,70 +44,39 @@ interface CourseCardProps {
 export function CourseCard({ course }: CourseCardProps) {
     const router = useRouter();
     const { token } = useAuth();
-    const [isEnrolled, setIsEnrolled] = useState(false);
-    const [loading, setLoading] = useState(false);
+    // Use prop as initial state, but allow local override after successful enrollment
+    const [isEnrolled, setIsEnrolled] = useState(course.isEnrolled || false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
-        // Check enrollment status (optimistic or separate call)
-        // To minimize API calls, we might want to pass this prop from parent, 
-        // but for now let's just make it work.
-        if (token) {
-            api.get(`/courses/${course.id}/status`, token)
-                .then(res => setIsEnrolled(res.isEnrolled))
-                .catch(() => setIsEnrolled(false));
-        }
-    }, [course.id, token]);
+        setIsEnrolled(course.isEnrolled || false);
+    }, [course.isEnrolled]);
 
-
-    const handleEnroll = async () => {
+    const handleEnrollClick = () => {
         if (!token) {
             router.push('/login');
             return;
         }
-        setLoading(true);
-        try {
-            await api.post(`/courses/${course.id}/enroll`, {}, token);
-            setIsEnrolled(true);
-            toast.success("Enrolled successfully! Redirecting...");
-            router.refresh();
-            // Optional: Redirect to course immediately
-            // router.push(`/courses/${course.id}`);
-        } catch (error: any) {
-            console.error("Enrollment failed", error);
-            if (error.status === 403 || error.message?.includes("limit")) {
-                toast.error("Guest Limit Reached", {
-                    description: "You can only enroll in 2 courses as a guest. Please create an account to unlock unlimited access.",
-                    duration: 5000,
-                    action: {
-                        label: "Register",
-                        onClick: () => router.push("/register")
-                    }
-                });
-            } else {
-                toast.error("Enrollment failed", {
-                    description: error.message || "Something went wrong. Please try again."
-                });
-            }
-        } finally {
-            setLoading(false);
-        }
+        setIsModalOpen(true);
     };
 
     return (
 
         <Card className="flex flex-col h-full group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary/50 bg-card/50 backdrop-blur-sm overflow-hidden relative">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <CardTitle className="line-clamp-2 text-xl font-bold group-hover:text-primary transition-colors">{course.title}</CardTitle>
-                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold shadow-sm bg-primary/10 text-primary border-primary/20">
-                        {course.level}
-                    </span>
-                </div>
-                <CardDescription className="line-clamp-2 pt-2">
-                    {course.description || "Unlock your potential with this comprehensive course designed for master learners."}
-                </CardDescription>
-            </CardHeader>
+            <Link href={`/courses/${course.id}`} className="block cursor-pointer">
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <CardTitle className="line-clamp-2 text-xl font-bold group-hover:text-primary transition-colors">{course.title}</CardTitle>
+                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold shadow-sm bg-primary/10 text-primary border-primary/20">
+                            {course.level}
+                        </span>
+                    </div>
+                    <CardDescription className="line-clamp-2 pt-2">
+                        {course.description || "Unlock your potential with this comprehensive course designed for master learners."}
+                    </CardDescription>
+                </CardHeader>
+            </Link>
             <CardContent className="flex-1">
                 {/* Instructor Info */}
                 {course.instructor && (
@@ -135,25 +107,52 @@ export function CourseCard({ course }: CourseCardProps) {
             <CardFooter className="pt-4 border-t bg-muted/20">
                 {isEnrolled ? (
                     <Link href={`/courses/${course.id}`} className="w-full">
-                        <Button className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg shadow-emerald-500/20 border-none">
-                            <CheckCircle className="mr-2 h-4 w-4" />
-                            Continue Learning
+                        <Button
+                            className={`w-full text-white shadow-lg border-none ${course.isCompleted
+                                ? "bg-muted hover:bg-muted/80 text-foreground shadow-none border border-input"
+                                : "bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-500/20"
+                                }`}
+                            variant={course.isCompleted ? "outline" : "default"}
+                        >
+                            {course.isCompleted ? (
+                                <>
+                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                    Review Course
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Continue Learning
+                                </>
+                            )}
                         </Button>
                     </Link>
                 ) : (
-                    <Button
-                        className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all text-white font-semibold"
-                        onClick={handleEnroll}
-                        disabled={loading}
-                    >
-                        {loading ? "Enrolling..." : (
-                            (course.discountedPrice || course.price) > 0
-                                ? `Enroll (₹${(course.discountedPrice || course.price).toLocaleString()})`
-                                : "Enroll for Free"
-                        )}
-                    </Button>
+                    <div className="flex gap-2 w-full">
+                        <Link href={`/courses/${course.id}`} className="flex-1">
+                            <Button variant="outline" className="w-full">
+                                View Details
+                            </Button>
+                        </Link>
+                        <Button
+                            className="flex-1 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all text-white font-semibold"
+                            onClick={handleEnrollClick}
+                        >
+                            Enroll
+                        </Button>
+                    </div>
                 )}
             </CardFooter>
+
+            <EnrollmentModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={() => {
+                    setIsEnrolled(true);
+                    router.refresh();
+                }}
+                course={course}
+            />
         </Card>
     );
 }

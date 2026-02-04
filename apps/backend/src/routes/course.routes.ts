@@ -26,6 +26,7 @@ router.get('/', CourseController.getCourses);
 
 // Dynamic Routes (ID based)
 router.get('/:id/analytics', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getCourseAnalytics);
+router.get('/:id/students', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getEnrolledStudents);
 router.get('/:id', CourseController.getCourse);
 router.post('/:id/enroll', authenticateToken, CourseController.enrollCourse);
 router.post('/:id/publish', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.publishCourse);

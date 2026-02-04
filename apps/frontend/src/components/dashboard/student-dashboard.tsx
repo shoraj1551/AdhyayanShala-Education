@@ -2,22 +2,30 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Trophy, Clock, Target, ArrowRight } from "lucide-react";
+import { BookOpen, Trophy, Clock, Target, ArrowRight, PlayCircle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { Progress } from "@/components/ui/progress";
 
 export function StudentDashboard({ user, token }: { user: any, token: string | null }) {
     const [stats, setStats] = useState<any>(null);
+    const [enrolledCourses, setEnrolledCourses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (token) {
+            // Fetch stats
             api.get('/student/stats', token)
                 .then(setStats)
-                .catch(() => setStats({})) // Fallback
+                .catch(() => setStats({}))
                 .finally(() => setLoading(false));
+
+            // Fetch enrolled courses
+            api.get('/student/enrolled-courses', token)
+                .then(setEnrolledCourses)
+                .catch(() => setEnrolledCourses([]));
         }
     }, [token]);
 
@@ -39,7 +47,7 @@ export function StudentDashboard({ user, token }: { user: any, token: string | n
                 </div>
                 <div className="flex gap-2">
                     <Link href="/courses">
-                        <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">Resume Learning</Button>
+                        <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">Browse Courses</Button>
                     </Link>
                 </div>
             </div>
@@ -64,6 +72,43 @@ export function StudentDashboard({ user, token }: { user: any, token: string | n
                     </Card>
                 ))}
             </div>
+
+            {/* My Learning Section */}
+            {enrolledCourses.length > 0 && (
+                <Card className="border-none shadow-md">
+                    <CardHeader>
+                        <CardTitle>My Learning</CardTitle>
+                        <CardDescription>Continue where you left off</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {enrolledCourses.map((course) => (
+                                <div key={course.id} className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                                    <div className="flex-1 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="font-semibold">{course.title}</h4>
+                                            <span className="text-sm text-muted-foreground">
+                                                {course.completedLessons}/{course.totalLessons} lessons
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground line-clamp-1">{course.description}</p>
+                                        <div className="flex items-center gap-2">
+                                            <Progress value={course.progress} className="flex-1" />
+                                            <span className="text-sm font-medium">{course.progress}%</span>
+                                        </div>
+                                    </div>
+                                    <Link href={`/courses/${course.id}`}>
+                                        <Button className="gap-2">
+                                            <PlayCircle className="h-4 w-4" />
+                                            Continue Learning
+                                        </Button>
+                                    </Link>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4 border-none shadow-md">
@@ -94,13 +139,15 @@ export function StudentDashboard({ user, token }: { user: any, token: string | n
                         <CardDescription>Based on your interests.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="p-4 bg-background rounded-lg border shadow-sm flex justify-between items-center group cursor-pointer hover:border-primary/50 transition-colors">
-                            <div>
-                                <h4 className="font-semibold group-hover:text-primary transition-colors">Advanced Statistics</h4>
-                                <p className="text-xs text-muted-foreground">Intermediate • 4h 30m</p>
+                        <Link href="/courses">
+                            <div className="p-4 bg-background rounded-lg border shadow-sm flex justify-between items-center group cursor-pointer hover:border-primary/50 transition-colors">
+                                <div>
+                                    <h4 className="font-semibold group-hover:text-primary transition-colors">Explore More Courses</h4>
+                                    <p className="text-xs text-muted-foreground">Browse our full catalog</p>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                             </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-                        </div>
+                        </Link>
                     </CardContent>
                 </Card>
             </div>

@@ -23,7 +23,7 @@ interface LiveSettings {
     scheduleNote: string;
 }
 
-export function StudentScheduleView({ courseId }: { courseId: string }) {
+export function StudentScheduleView({ courseId, isEnrolled }: { courseId: string, isEnrolled: boolean }) {
     const { user } = useAuth();
     const [settings, setSettings] = useState<LiveSettings | null>(null);
     const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -68,9 +68,9 @@ export function StudentScheduleView({ courseId }: { courseId: string }) {
                     )}
 
                     <div className="flex gap-3">
-                        <Button onClick={handleJoin} disabled={!settings?.meetingLink} className="gap-2">
+                        <Button onClick={handleJoin} disabled={!settings?.meetingLink || !isEnrolled} className="gap-2">
                             <Video className="h-4 w-4" />
-                            Join Class
+                            {isEnrolled ? "Join Class" : "Enroll to Join"}
                         </Button>
                         <Button variant="outline" onClick={handleDownloadCalendar} className="gap-2">
                             <Download className="h-4 w-4" />

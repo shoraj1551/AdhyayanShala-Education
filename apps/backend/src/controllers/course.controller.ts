@@ -3,9 +3,9 @@ import { Request, Response } from 'express';
 import * as CourseService from '../services/course.service';
 import * as CourseAnalyticsService from '../services/courseAnalytics.service';
 import { AuthRequest } from '../middleware/auth.middleware';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { config } from '../config/env.config';
+import Logger from '../lib/logger';
+import jwt from 'jsonwebtoken';
 
 export const getCourses = async (req: Request, res: Response) => {
     try {
@@ -16,14 +16,16 @@ export const getCourses = async (req: Request, res: Response) => {
         const courses = await CourseService.listCourses(search, excludeInstructorId);
         res.json(courses);
     } catch (error) {
-        console.error('Error in getCourses:', error);
+        Logger.error('Error in getCourses:', error);
         res.status(500).json({ message: 'Error fetching courses', error: error instanceof Error ? error.message : 'Unknown error' });
     }
 };
 
+// ... getCourses above ... 
+
 export const getInstructorCourses = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
         const courses = await CourseService.listInstructorCourses(userId);
         res.json(courses);
@@ -34,106 +36,137 @@ export const getInstructorCourses = async (req: AuthRequest, res: Response) => {
 
 export const getInstructorStats = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
         const stats = await CourseService.getInstructorStats(userId);
         res.json(stats);
     } catch (error) {
-        console.error('[INSTRUCTOR STATS] Error:', error);
+        Logger.error('[INSTRUCTOR STATS] Error:', error);
         res.status(500).json({ message: 'Error fetching instructor stats' });
+    }
+};
+
+export const getEnrolledStudents = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params; // courseId
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const students = await CourseService.getCourseEnrollments(id, userId);
+        res.json(students);
+    } catch (error: any) {
+        Logger.error('[ENROLLED STUDENTS] Error:', error);
+        res.status(error.message === 'Course not found or unauthorized' ? 403 : 500)
+            .json({ message: error.message || 'Error fetching enrollments' });
     }
 };
 
 export const getCourseAnalytics = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         const analytics = await CourseAnalyticsService.getCourseAnalytics(id, userId);
         res.json(analytics);
     } catch (error: any) {
-        console.error('[COURSE ANALYTICS] Error:', error);
+        Logger.error('[COURSE ANALYTICS] Error:', error);
         res.status(error.message === 'Course not found or unauthorized' ? 404 : 500)
             .json({ message: error.message || 'Error fetching course analytics' });
     }
 };
 
-export const addModule = async (req: Request, res: Response) => {
+export const addModule = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { title } = req.body;
-        const module = await CourseService.addModule(id, title);
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const module = await CourseService.addModule(id, title, userId);
         res.status(201).json(module);
-    } catch (error) {
-        res.status(500).json({ message: 'Error adding module' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error adding module', error: error.message });
     }
 };
 
-export const addLesson = async (req: Request, res: Response) => {
+export const addLesson = async (req: AuthRequest, res: Response) => {
     try {
         const { moduleId } = req.params; // Expecting /modules/:moduleId/lessons
-        const lesson = await CourseService.addLesson(moduleId, req.body);
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const lesson = await CourseService.addLesson(moduleId, req.body, userId);
         res.status(201).json(lesson);
-    } catch (error) {
-        res.status(500).json({ message: 'Error adding lesson' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error adding lesson', error: error.message });
     }
 };
 
-export const deleteModule = async (req: Request, res: Response) => {
+export const deleteModule = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        await CourseService.deleteModule(id);
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        await CourseService.deleteModule(id, userId);
         res.json({ message: 'Module deleted' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error deleting module' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error deleting module', error: error.message });
     }
 };
 
-export const deleteLesson = async (req: Request, res: Response) => {
+export const deleteLesson = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        await CourseService.deleteLesson(id);
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        await CourseService.deleteLesson(id, userId);
         res.json({ message: 'Lesson deleted' });
-    } catch (error) {
-        res.status(500).json({ message: 'Error deleting lesson' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error deleting lesson', error: error.message });
     }
 };
 
-export const updateModule = async (req: Request, res: Response) => {
+export const updateModule = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { title } = req.body;
-        const module = await CourseService.updateModule(id, title);
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const module = await CourseService.updateModule(id, title, userId);
         res.json(module);
-    } catch (error) {
-        res.status(500).json({ message: 'Error updating module' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error updating module', error: error.message });
     }
 };
 
-export const updateLesson = async (req: Request, res: Response) => {
+export const updateLesson = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const lesson = await CourseService.updateLesson(id, req.body);
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const lesson = await CourseService.updateLesson(id, req.body, userId);
         res.json(lesson);
-    } catch (error) {
-        res.status(500).json({ message: 'Error updating lesson' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Error updating lesson', error: error.message });
     }
 };
 
 export const createCourse = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-        console.log('[CREATE COURSE] Request body:', JSON.stringify(req.body, null, 2));
-        console.log('[CREATE COURSE] User ID:', userId);
+        Logger.info(`[CREATE COURSE] User ID: ${userId}`);
 
         const result = await CourseService.createCourse({ ...req.body, instructorId: userId });
-        console.log('[CREATE COURSE] Success:', result.id);
         res.status(201).json(result);
     } catch (error: any) {
-        console.error('[CREATE COURSE] Error:', error);
+        Logger.error('[CREATE COURSE] Error:', error);
         res.status(500).json({
             message: 'Error creating course',
             error: error.message
@@ -157,9 +190,8 @@ export const getCourse = async (req: Request, res: Response) => {
             const token = authHeader && authHeader.split(' ')[1];
 
             if (token) {
-                const jwt = require('jsonwebtoken');
                 try {
-                    const user = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+                    const user = jwt.verify(token, config.JWT_SECRET) as any;
                     if (user.role === 'INSTRUCTOR' || user.role === 'ADMIN') {
                         return res.json(course);
                     }
@@ -177,22 +209,18 @@ export const getCourse = async (req: Request, res: Response) => {
     }
 };
 
-
-
 export const enrollCourse = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const userId = req.user?.userId;
-        const userRole = req.user?.role; // Need to ensure role is in JWT payload interface
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
 
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         // GUEST LIMIT CHECK
         if (userRole === 'GUEST') {
-            const enrollmentCount = await prisma.enrollment.count({
-                where: { userId }
-            });
-            if (enrollmentCount >= 2) {
+            const canEnroll = await CourseService.checkGuestEnrollmentLimit(userId);
+            if (!canEnroll) {
                 return res.status(403).json({
                     message: 'Guest limit reached. You can only enroll in 2 courses as a guest. Please register to continue.'
                 });
@@ -212,7 +240,7 @@ export const enrollCourse = async (req: AuthRequest, res: Response) => {
 export const getEnrollmentStatus = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         const isEnrolled = await CourseService.checkEnrollment(userId, id);
@@ -231,20 +259,27 @@ export const getEnrollmentStatus = async (req: AuthRequest, res: Response) => {
 export const publishCourse = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const course = await CourseService.publishCourse(id);
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const course = await CourseService.publishCourse(id, userId);
         res.json(course);
-    } catch (error) {
-        res.status(500).json({ message: 'Error publishing course' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message || 'Error publishing course' });
     }
 };
 
 export const unpublishCourse = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const course = await CourseService.unpublishCourse(id);
+        const userId = req.user?.id;
+        const { otp } = req.body;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const course = await CourseService.unpublishCourseWithOTP(id, userId, otp);
         res.json(course);
-    } catch (error) {
-        res.status(500).json({ message: 'Error unpublishing course' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message || 'Error unpublishing course' });
     }
 };
 
@@ -259,7 +294,7 @@ export const getAnnouncements = async (req: Request, res: Response) => {
 
 export const getNotifications = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
         const notifications = await CourseService.listNotifications(userId);
         res.json(notifications);
@@ -271,7 +306,7 @@ export const getNotifications = async (req: AuthRequest, res: Response) => {
 export const markNotificationRead = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
         await CourseService.markNotificationRead(id, userId);
         res.json({ message: 'Marked as read' });
@@ -284,7 +319,7 @@ export const markNotificationRead = async (req: AuthRequest, res: Response) => {
 export const getLessonNote = async (req: AuthRequest, res: Response) => {
     try {
         const { lessonId } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         const note = await CourseService.getNote(userId, lessonId);
@@ -298,7 +333,7 @@ export const saveLessonNote = async (req: AuthRequest, res: Response) => {
     try {
         const { lessonId } = req.params;
         const { content } = req.body;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         const note = await CourseService.saveNote(userId, lessonId, content);
@@ -313,7 +348,7 @@ export const saveLessonNote = async (req: AuthRequest, res: Response) => {
 export const requestDeleteOTP = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params; // Course ID
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
         const result = await CourseService.generateDeleteOTP(id, userId);
@@ -326,7 +361,7 @@ export const requestDeleteOTP = async (req: AuthRequest, res: Response) => {
 export const deleteCourse = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params; // Course ID
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         const { otp } = req.body; // Check explicitly, body might be undefined if no otp sent
 
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });

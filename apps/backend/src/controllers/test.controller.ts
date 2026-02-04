@@ -111,7 +111,7 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { answers } = req.body;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         const userRole = req.user?.role;
 
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });

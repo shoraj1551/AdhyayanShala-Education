@@ -1,11 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-change-this';
+import * as AuthService from '../services/auth.service';
+import { config } from '../config/env.config';
 
 // Validation Schemas
 const registerSchema = z.object({
@@ -30,38 +26,7 @@ const loginSchema = z.object({
 export const register = async (req: Request, res: Response) => {
     try {
         const validatedData = registerSchema.parse(req.body);
-
-        const existingUser = await prisma.user.findUnique({
-            where: { email: validatedData.email },
-        });
-
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
-
-        const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-
-        const user = await prisma.user.create({
-            data: {
-                email: validatedData.email,
-                password: hashedPassword,
-                name: validatedData.name,
-                role: validatedData.role,
-                // Profile mappings
-                bio: validatedData.bio,
-                expertise: validatedData.expertise,
-                experience: validatedData.experience,
-                linkedin: validatedData.linkedin,
-                studentStatus: validatedData.currentStatus, // Map from frontend
-                interests: validatedData.interests,
-            },
-        });
-
-        const token = jwt.sign(
-            { userId: user.id, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
+        const { user, token } = await AuthService.registerUser(validatedData);
 
         res.status(201).json({
             message: 'User created successfully',
@@ -73,11 +38,11 @@ export const register = async (req: Request, res: Response) => {
                 role: user.role,
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ message: 'Validation error', errors: (error as any).errors });
         }
-        res.status(500).json({ message: 'Error registering user' });
+        res.status(error.message === 'User already exists' ? 400 : 500).json({ message: error.message || 'Error registering user' });
     }
 };
 
@@ -86,29 +51,31 @@ export const login = async (req: Request, res: Response) => {
         console.log('[LOGIN] Attempt for email:', req.body.email);
         const validatedData = loginSchema.parse(req.body);
 
-        const user = await prisma.user.findUnique({
-            where: { email: validatedData.email },
-        });
-
-        if (!user) {
-            console.log('[LOGIN] User not found:', validatedData.email);
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
+        const user = await AuthService.loginUser(validatedData);
 
         console.log('[LOGIN] User found:', user.email, 'Role:', user.role);
-        const isPasswordValid = await bcrypt.compare(validatedData.password, user.password);
 
-        if (!isPasswordValid) {
-            console.log('[LOGIN] Invalid password for:', user.email);
-            return res.status(401).json({ message: 'Invalid credentials' });
+        // 2FA FOR ADMIN
+        if (user.role === 'ADMIN') {
+            const otp = await AuthService.generateAdminOTP(user.id, user.email);
+
+            if (config.NODE_ENV === 'development') {
+                console.log(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}: ${otp}`);
+            } else {
+                console.log(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}`);
+                // TODO: Integrate Email Service here
+            }
+
+            return res.json({
+                message: 'OTP sent to admin email',
+                otpRequired: true,
+                userId: user.id,
+                email: user.email
+            });
         }
 
         console.log('[LOGIN] Login successful for:', user.email);
-        const token = jwt.sign(
-            { userId: user.id, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
+        const token = AuthService.generateToken(user);
 
         res.json({
             message: 'Login successful',
@@ -120,36 +87,40 @@ export const login = async (req: Request, res: Response) => {
                 role: user.role,
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[LOGIN] Error:', error);
         if (error instanceof z.ZodError) {
             return res.status(400).json({ message: 'Validation error', errors: (error as any).errors });
         }
-        res.status(500).json({ message: 'Error logging in' });
+        res.status(401).json({ message: error.message || 'Error logging in' });
+    }
+};
+
+export const verifyLoginOtp = async (req: Request, res: Response) => {
+    try {
+        const { userId, otp } = req.body;
+        const { user, token } = await AuthService.verifyAdminOTP(userId, otp);
+
+        res.json({
+            message: 'Login successful',
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+            },
+        });
+
+    } catch (error: any) {
+        console.error('[OTP VERIFY] Error:', error);
+        res.status(400).json({ message: error.message || 'Error verifying OTP' });
     }
 };
 
 export const guestLogin = async (req: Request, res: Response) => {
     try {
-        const suffix = Math.random().toString(36).substring(7);
-        const email = `guest_${Date.now()}_${suffix}@shoraj.com`;
-        const password = Math.random().toString(36).substring(2, 15);
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const user = await prisma.user.create({
-            data: {
-                email,
-                password: hashedPassword,
-                name: "Guest User",
-                role: "GUEST",
-            },
-        });
-
-        const token = jwt.sign(
-            { userId: user.id, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
+        const { user, token } = await AuthService.createGuestSession();
 
         res.status(201).json({
             message: 'Guest session created',
@@ -167,13 +138,11 @@ export const guestLogin = async (req: Request, res: Response) => {
 };
 
 
+
 export const getMe = async (req: any, res: Response) => {
     try {
-        const userId = req.user?.userId;
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { id: true, email: true, name: true, role: true, avatar: true }
-        });
+        const userId = req.user?.id;
+        const user = await AuthService.getUserById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json(user);
     } catch (error) {
@@ -183,17 +152,10 @@ export const getMe = async (req: any, res: Response) => {
 
 export const updateProfile = async (req: any, res: Response) => {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         const { name, avatar } = req.body;
 
-        const user = await prisma.user.update({
-            where: { id: userId },
-            data: {
-                name,
-                avatar
-            },
-            select: { id: true, email: true, name: true, role: true, avatar: true }
-        });
+        const user = await AuthService.updateUserProfile(userId, { name, avatar });
 
         res.json({ message: 'Profile updated successfully', user });
     } catch (error) {

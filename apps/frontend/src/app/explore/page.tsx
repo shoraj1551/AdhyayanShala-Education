@@ -141,7 +141,7 @@ export default function ExplorePage() {
                                                     <p className="text-muted-foreground text-sm line-clamp-3">{course.description}</p>
                                                 </CardContent>
                                                 <CardFooter>
-                                                    <Link href={`/login?redirect=/courses/${course.id}`} className="w-full">
+                                                    <Link href={`/courses/${course.id}`} className="w-full">
                                                         <Button className="w-full">View Details</Button>
                                                     </Link>
                                                 </CardFooter>

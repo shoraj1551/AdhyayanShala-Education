@@ -176,12 +176,14 @@ export default function CourseEditorPage() {
     };
 
     // --- DELETE COURSE LOGIC ---
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    // --- ACTION VERIFICATION LOGIC (DELETE / UNPUBLISH) ---
+    const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+    const [actionType, setActionType] = useState<'DELETE' | 'UNPUBLISH' | null>(null);
     const [otpSent, setOtpSent] = useState(false);
-    const [deleteOtp, setDeleteOtp] = useState("");
-    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [actionLoading, setActionLoading] = useState(false);
 
-    const handleRequestDeleteOtp = async () => {
+    const handleRequestOtp = async () => {
         try {
             await api.post(`/courses/${course.id}/delete-otp`, {}, token ?? undefined);
             setOtpSent(true);
@@ -191,27 +193,45 @@ export default function CourseEditorPage() {
         }
     };
 
-    const handleConfirmDelete = async () => {
-        // Logic for Enrolled Courses (OTP Required)
+    const handleConfirmAction = async () => {
+        if (!actionType) return;
+
+        // Logic for Enrolled Courses (OTP Required checks)
         const hasEnrollments = (course._count?.enrollments || 0) > 0;
 
         if (hasEnrollments) {
-            if (!deleteOtp) return alert("Please enter OTP (Required for enrolled courses)");
-            if (!confirm("FINAL WARNING: This action cannot be undone. Type OK to proceed.")) return;
-        } else {
-            if (!confirm("Are you sure you want to delete this course?")) return;
+            if (!otp) return alert("Please enter OTP (Required for enrolled courses)");
+            if (!confirm("Are you sure? This action requires verification.")) return;
         }
 
-        setDeleteLoading(true);
+        setActionLoading(true);
         try {
-            await api.delete(`/courses/${course.id}`, { otp: deleteOtp }, token ?? undefined);
-            alert("Course deleted successfully.");
-            router.push('/instructor/courses');
+            if (actionType === 'DELETE') {
+                await api.delete(`/courses/${course.id}`, { otp: otp }, token ?? undefined);
+                alert("Course deleted successfully.");
+                router.push('/instructor/courses');
+            } else if (actionType === 'UNPUBLISH') {
+                await api.post(`/courses/${course.id}/unpublish`, { otp: otp }, token ?? undefined);
+                alert("Course Unpublished.");
+                setShowVerifyDialog(false);
+                fetchCourse();
+            }
         } catch (error: any) {
-            alert(error.response?.data?.message || "Failed to delete course.");
+            alert(error.response?.data?.message || `Failed to ${actionType.toLowerCase()} course.`);
         } finally {
-            setDeleteLoading(false);
+            setActionLoading(false);
+            setOtp("");
+            setOtpSent(false); // Reset for next time
         }
+    };
+
+    const initiateAction = (type: 'DELETE' | 'UNPUBLISH') => {
+        setActionType(type);
+        const hasEnrollments = (course._count?.enrollments || 0) > 0;
+
+        // If no enrollments, we can maybe prompt differently or just use the same dialog for consistency?
+        // Let's use the dialog but it will show "Delete Immediately" option.
+        setShowVerifyDialog(true);
     };
 
     if (loading) return <div className="p-8">Loading editor...</div>;
@@ -248,16 +268,8 @@ export default function CourseEditorPage() {
                         <Button
                             variant="secondary"
                             className="bg-zinc-200 hover:bg-zinc-300 text-zinc-900"
-                            onClick={async () => {
-                                if (!confirm("Unpublish this course? Students will lose access.")) return;
-                                try {
-                                    await api.post(`/courses/${course.id}/unpublish`, {}, token ?? undefined); // Need backend route
-                                    alert("Course Unpublished.");
-                                    fetchCourse();
-                                } catch (e) {
-                                    alert("Failed to unpublish");
-                                }
-                            }}
+                            className="bg-zinc-200 hover:bg-zinc-300 text-zinc-900"
+                            onClick={() => initiateAction('UNPUBLISH')}
                         >
                             Unpublish
                         </Button>
@@ -569,17 +581,19 @@ export default function CourseEditorPage() {
                             <p className="font-semibold text-foreground">Delete this course</p>
                             <p className="text-sm text-muted-foreground">Once you delete a course, there is no going back. Please be certain.</p>
                         </div>
-                        <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>Delete Course</Button>
+                        <Button variant="destructive" onClick={() => initiateAction('DELETE')}>Delete Course</Button>
                     </CardContent>
                 </Card>
             </div>
 
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Course</DialogTitle>
+                        <DialogTitle>{actionType === 'DELETE' ? "Delete Course" : "Unpublish Course"}</DialogTitle>
                         <DialogDescription>
-                            This action cannot be undone. This will permanently delete the course, all modules, lessons, and tests.
+                            {actionType === 'DELETE'
+                                ? "This action cannot be undone. This will permanently delete the course, all modules, lessons, and tests."
+                                : "Unpublishing will hide this course from the catalog. Existing students may lose access unless re-published."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -588,9 +602,9 @@ export default function CourseEditorPage() {
                             <>
                                 {!otpSent ? (
                                     <div className="text-center space-y-4">
-                                        <p className="text-sm font-medium text-amber-600">This course has enrolled students. Authenticated deletion required.</p>
+                                        <p className="text-sm font-medium text-amber-600">This course has enrolled students. Verification required.</p>
                                         <p className="text-sm">To verify it's you, we need to send an OTP to your email.</p>
-                                        <Button onClick={handleRequestDeleteOtp} className="w-full">Send OTP</Button>
+                                        <Button onClick={handleRequestOtp} className="w-full">Send OTP</Button>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
@@ -601,8 +615,8 @@ export default function CourseEditorPage() {
                                             <Label>Enter OTP</Label>
                                             <Input
                                                 placeholder="6-digit code"
-                                                value={deleteOtp}
-                                                onChange={(e) => setDeleteOtp(e.target.value)}
+                                                value={otp}
+                                                onChange={(e) => setOtp(e.target.value)}
                                                 maxLength={6}
                                                 className="text-center text-lg tracking-widest"
                                             />
@@ -613,18 +627,19 @@ export default function CourseEditorPage() {
                         ) : (
                             <div className="p-4 bg-muted/50 rounded-lg text-center">
                                 <p className="text-sm text-foreground mb-2">This course has <span className="font-bold">0 students</span> enrolled.</p>
-                                <p className="text-xs text-muted-foreground">You can delete it immediately without verification.</p>
+                                <p className="text-xs text-muted-foreground">You can proceed immediately.</p>
                             </div>
                         )}
                     </div>
 
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-                        {/* Show Delete Button if: (No Enrollments) OR (OTP Sent) */}
+                        <Button variant="ghost" onClick={() => setShowVerifyDialog(false)}>Cancel</Button>
                         {((course._count?.enrollments || 0) === 0 || otpSent) && (
-                            <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteLoading}>
-                                {deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2 h-4 w-4" />}
-                                {(course._count?.enrollments || 0) === 0 ? "Delete Immediately" : "Confirm Delete"}
+                            <Button variant={actionType === 'DELETE' ? "destructive" : "default"} onClick={handleConfirmAction} disabled={actionLoading}>
+                                {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (actionType === 'DELETE' ? <Trash className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />)}
+                                {actionType === 'DELETE'
+                                    ? ((course._count?.enrollments || 0) === 0 ? "Delete Immediately" : "Confirm Delete")
+                                    : "Confirm Unpublish"}
                             </Button>
                         )}
                     </DialogFooter>

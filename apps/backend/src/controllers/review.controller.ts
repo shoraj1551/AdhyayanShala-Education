@@ -6,7 +6,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 export const createReview = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         const { rating, comment } = req.body;
 
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });

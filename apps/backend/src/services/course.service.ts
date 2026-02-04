@@ -142,7 +142,42 @@ export const getInstructorStats = async (instructorId: string) => {
     };
 };
 
-export const addModule = async (courseId: string, title: string) => {
+export const getCourseEnrollments = async (courseId: string, instructorId: string) => {
+    // Verify course ownership
+    const course = await prisma.course.findUnique({
+        where: { id: courseId },
+        select: { instructorId: true }
+    });
+
+    if (!course || course.instructorId !== instructorId) {
+        throw new Error("Course not found or unauthorized");
+    }
+
+    // Fetch enrollments
+    // Assuming Enrollment has relation to User
+    return await prisma.enrollment.findMany({
+        where: { courseId },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    createdAt: true // User joined since
+                }
+            }
+        },
+        orderBy: { enrolledAt: 'desc' }
+    });
+};
+
+export const addModule = async (courseId: string, title: string, userId: string) => {
+    // Verify Access
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) throw new Error("Course not found");
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+
     // Get max order
     const lastModule = await prisma.module.findFirst({
         where: { courseId },
@@ -166,7 +201,14 @@ export const addLesson = async (moduleId: string, data: {
     videoUrl?: string,
     summary?: string,
     attachmentUrl?: string
-}) => {
+}, userId: string) => {
+    // Verify Access via Module -> Course
+    const module = await prisma.module.findUnique({ where: { id: moduleId }, include: { course: true } });
+    if (!module) throw new Error("Module not found");
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+
     const lastLesson = await prisma.lesson.findFirst({
         where: { moduleId },
         orderBy: { order: 'desc' }
@@ -187,19 +229,35 @@ export const addLesson = async (moduleId: string, data: {
     });
 };
 
-export const deleteModule = async (id: string) => {
-    // Delete lessons first (cascade usually handles this but good to be explicit or rely on schema)
-    // Prisma schema doesn't show onDelete: Cascade for Lesson->Module. I should add it or delete manually.
-    // Let's delete lessons manually to be safe if cascade isn't set.
+export const deleteModule = async (id: string, userId: string) => {
+    // Verify Access
+    const module = await prisma.module.findUnique({ where: { id }, include: { course: true } });
+    if (!module) throw new Error("Module not found");
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+
+    // Delete lessons manually to be safe
     await prisma.lesson.deleteMany({ where: { moduleId: id } });
     return await prisma.module.delete({ where: { id } });
 };
 
-export const deleteLesson = async (id: string) => {
+export const deleteLesson = async (id: string, userId: string) => {
+    // Verify Access
+    const lesson = await prisma.lesson.findUnique({ where: { id }, include: { module: { include: { course: true } } } });
+    if (!lesson) throw new Error("Lesson not found");
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (lesson.module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+
     return await prisma.lesson.delete({ where: { id } });
 };
 
-export const updateModule = async (id: string, title: string) => {
+export const updateModule = async (id: string, title: string, userId: string) => {
+    // Verify Access
+    const module = await prisma.module.findUnique({ where: { id }, include: { course: true } });
+    if (!module) throw new Error("Module not found");
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+
     return await prisma.module.update({
         where: { id },
         data: { title }
@@ -213,7 +271,13 @@ export const updateLesson = async (id: string, data: {
     videoUrl?: string,
     summary?: string,
     attachmentUrl?: string
-}) => {
+}, userId: string) => {
+    // Verify Access
+    const lesson = await prisma.lesson.findUnique({ where: { id }, include: { module: { include: { course: true } } } });
+    if (!lesson) throw new Error("Lesson not found");
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (lesson.module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+
     return await prisma.lesson.update({
         where: { id },
         data
@@ -246,6 +310,46 @@ export const checkEnrollment = async (userId: string, courseId: string) => {
     return !!enrollment;
 }
 
+export const checkGuestEnrollmentLimit = async (userId: string) => {
+    const count = await prisma.enrollment.count({
+        where: { userId }
+    });
+    return count < 2;
+};
+
+// 2FA for Unpublish
+export const unpublishCourseWithOTP = async (courseId: string, userId: string, otp?: string) => {
+    const course = await prisma.course.findUnique({ where: { id: courseId }, include: { _count: { select: { enrollments: true } } } });
+    if (!course) throw new Error("Course not found");
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found");
+
+    console.log(`[Unpublish] CourseId: ${courseId}, UserId: ${userId}, Role: ${user.role}, Enrollments: ${course._count.enrollments}`);
+
+    if (course.instructorId !== userId && user.role !== 'ADMIN') {
+        throw new Error("Unauthorized");
+    }
+
+    if (course._count.enrollments > 0 && user.role !== 'ADMIN') {
+        if (!otp) throw new Error("OTP Required to unpublish active course.");
+        if (user.deleteOtp !== otp) throw new Error("Invalid OTP");
+        if (!user.deleteOtpExpires || new Date() > user.deleteOtpExpires) throw new Error("OTP Expired");
+    }
+
+    if (course._count.enrollments > 0) {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { deleteOtp: null, deleteOtpExpires: null }
+        });
+    }
+
+    return await prisma.course.update({
+        where: { id: courseId },
+        data: { isPublished: false }
+    });
+};
+
 export const getCourseProgress = async (userId: string, courseId: string) => {
     const progress = await prisma.lessonProgress.findMany({
         where: {
@@ -261,7 +365,16 @@ export const getCourseProgress = async (userId: string, courseId: string) => {
     return progress.map(p => p.lessonId);
 }
 
-export const publishCourse = async (courseId: string) => {
+export const publishCourse = async (courseId: string, userId?: string) => {
+    // Check override
+    if (userId) {
+        const course = await prisma.course.findUnique({ where: { id: courseId } });
+        if (course) {
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+        }
+    }
+
     // 1. Update Course
     const course = await prisma.course.update({
         where: { id: courseId },
@@ -295,7 +408,9 @@ export const publishCourse = async (courseId: string) => {
     return course;
 };
 
+// unpublishCourse replaced by unpublishCourseWithOTP
 export const unpublishCourse = async (courseId: string) => {
+    // Legacy support or internal use
     return await prisma.course.update({
         where: { id: courseId },
         data: { isPublished: false }
@@ -350,7 +465,12 @@ export const saveNote = async (userId: string, lessonId: string, content: string
 export const generateDeleteOTP = async (courseId: string, userId: string) => {
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new Error("Course not found");
-    if (course.instructorId !== userId) throw new Error("Unauthorized");
+
+    // Check permissions
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found");
+
+    if (course.instructorId !== userId && user.role !== 'ADMIN') throw new Error("Unauthorized");
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -383,17 +503,21 @@ export const deleteCourseWithOTP = async (courseId: string, userId: string, otp?
     });
 
     if (!course) throw new Error("Course not found");
-    if (course.instructorId !== userId) throw new Error("Unauthorized");
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("User not found");
+
+    if (course.instructorId !== userId && user.role !== 'ADMIN') throw new Error("Unauthorized");
 
     // 2. Check Enrollments & OTP
     const enrollmentCount = course._count.enrollments;
 
-    if (enrollmentCount > 0) {
+    if (enrollmentCount > 0 && user.role !== 'ADMIN') {
         // Require OTP only if students are enrolled
         if (!otp) throw new Error("OTP Required for courses with active students.");
 
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!user) throw new Error("User not found");
+        const userCheck = await prisma.user.findUnique({ where: { id: userId } });
+        // user is already fetched above, but keeping logic consistent if needed or reusing 'user' var
 
         if (user.deleteOtp !== otp) throw new Error("Invalid OTP");
         if (!user.deleteOtpExpires || new Date() > user.deleteOtpExpires) throw new Error("OTP Expired");

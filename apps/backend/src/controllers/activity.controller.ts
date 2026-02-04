@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const getInstructorActivity = async (req: any, res: Response) => {
     try {
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
 
         if (!userId) {
             return res.status(401).json({ message: "Unauthorized" });

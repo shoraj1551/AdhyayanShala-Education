@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, Users } from "lucide-react";
 
 export default function InstructorCoursesPage() {
     const { token } = useAuth();
@@ -68,10 +68,15 @@ export default function InstructorCoursesPage() {
                                         <span>Students</span>
                                     </div>
                                 </div>
-                                <div className="pt-2">
-                                    <Link href={`/instructor/courses/${course.id}/edit`}>
+                                <div className="pt-2 flex gap-2">
+                                    <Link href={`/instructor/courses/${course.id}/edit`} className="flex-1">
                                         <Button className="w-full" variant="secondary">
-                                            <Edit className="mr-2 h-4 w-4" /> Manage Content
+                                            <Edit className="mr-2 h-4 w-4" /> Manage
+                                        </Button>
+                                    </Link>
+                                    <Link href={`/instructor/courses/${course.id}/students`} className="flex-1">
+                                        <Button className="w-full" variant="outline">
+                                            <Users className="mr-2 h-4 w-4" /> Students
                                         </Button>
                                     </Link>
                                 </div>

@@ -4,32 +4,24 @@ import prisma from '../lib/prisma';
 // TODO: Replace with real user ID from Auth Middleware
 const DEV_STUDENT_EMAIL = 'student@shorajtomer.me';
 
-export const markLessonComplete = async (req: Request, res: Response) => {
+export const markLessonComplete = async (req: any, res: Response) => {
     try {
         const { lessonId } = req.body;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
 
         if (!lessonId) {
             return res.status(400).json({ message: 'Lesson ID is required' });
-        }
-
-        // Get (or create) the Dev Student
-        let user = await prisma.user.findUnique({ where: { email: DEV_STUDENT_EMAIL } });
-        if (!user) {
-            user = await prisma.user.create({
-                data: {
-                    email: DEV_STUDENT_EMAIL,
-                    name: 'Dev Student',
-                    password: 'placeholder',
-                    role: 'STUDENT'
-                }
-            });
         }
 
         // Upsert Progress
         const progress = await prisma.lessonProgress.upsert({
             where: {
                 userId_lessonId: {
-                    userId: user.id,
+                    userId: userId,
                     lessonId: lessonId
                 }
             },
@@ -37,7 +29,7 @@ export const markLessonComplete = async (req: Request, res: Response) => {
                 completedAt: new Date()
             },
             create: {
-                userId: user.id,
+                userId: userId,
                 lessonId: lessonId
             }
         });
@@ -49,16 +41,16 @@ export const markLessonComplete = async (req: Request, res: Response) => {
     }
 };
 
-export const getProgress = async (req: Request, res: Response) => {
+export const getProgress = async (req: any, res: Response) => {
     try {
-        // Get (or create) the Dev Student
-        let user = await prisma.user.findUnique({ where: { email: DEV_STUDENT_EMAIL } });
-        if (!user) {
-            return res.json([]); // No user, no progress
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
         }
 
         const progress = await prisma.lessonProgress.findMany({
-            where: { userId: user.id },
+            where: { userId: userId },
             select: { lessonId: true, completedAt: true }
         });
 

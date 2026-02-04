@@ -57,3 +57,63 @@ export const getDashboardStats = async (userId: string) => {
         recentActivity: activity
     };
 };
+
+export const getEnrolledCourses = async (userId: string) => {
+    const enrollments = await prisma.enrollment.findMany({
+        where: { userId },
+        include: {
+            course: {
+                include: {
+                    instructor: {
+                        select: { id: true, name: true, email: true }
+                    },
+                    modules: {
+                        include: {
+                            lessons: true
+                        }
+                    }
+                }
+            }
+        },
+        orderBy: { enrolledAt: 'desc' }
+    });
+
+    // Calculate progress for each course
+    const coursesWithProgress = await Promise.all(
+        enrollments.map(async (enrollment) => {
+            const totalLessons = enrollment.course.modules.reduce(
+                (sum, module) => sum + module.lessons.length,
+                0
+            );
+
+            const completedLessons = await prisma.lessonProgress.count({
+                where: {
+                    userId,
+                    lesson: {
+                        moduleId: {
+                            in: enrollment.course.modules.map(m => m.id)
+                        }
+                    }
+                }
+            });
+
+            const progressPercentage = totalLessons > 0
+                ? Math.round((completedLessons / totalLessons) * 100)
+                : 0;
+
+            return {
+                id: enrollment.course.id,
+                title: enrollment.course.title,
+                description: enrollment.course.description,
+                instructor: enrollment.course.instructor,
+                enrolledAt: enrollment.enrolledAt,
+                progress: progressPercentage,
+                totalLessons,
+                completedLessons,
+                type: enrollment.course.type
+            };
+        })
+    );
+
+    return coursesWithProgress;
+};

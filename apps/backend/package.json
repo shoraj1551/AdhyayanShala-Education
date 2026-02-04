@@ -18,6 +18,8 @@
         "jsonwebtoken": "^9.0.3",
         "morgan": "^1.10.0",
         "multer": "^2.0.2",
+        "razorpay": "^2.9.6",
+        "winston": "^3.19.0",
         "zod": "^4.3.5"
     },
     "devDependencies": {

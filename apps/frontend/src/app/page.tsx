@@ -13,7 +13,7 @@ import { newsData } from "@/lib/news-data";
 import { NewsTicker } from "@/components/NewsTicker";
 
 export default function LandingPage() {
-  const { user } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const targetRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: targetRef });
@@ -73,10 +73,15 @@ export default function LandingPage() {
           <span>AdhyayanShala</span>
         </div>
         <div className="flex items-center gap-4">
-          {user ? (
-            <Link href="/dashboard">
-              <Button>Dashboard</Button>
-            </Link>
+          {isLoading ? (
+            <div className="w-24 h-9 bg-muted animate-pulse rounded-md" />
+          ) : user ? (
+            <div className="flex items-center gap-4">
+              <Link href="/explore">
+                <Button variant="outline">Browse Courses</Button>
+              </Link>
+              <Button variant="ghost" onClick={() => logout(false)}>Log Out</Button>
+            </div>
           ) : (
             <>
               <Button variant="ghost" onClick={() => setIsAuthModalOpen(true)}>Sign In</Button>

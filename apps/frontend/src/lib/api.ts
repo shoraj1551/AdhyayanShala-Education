@@ -45,6 +45,21 @@ export const api = {
         return handleResponse(res);
     },
 
+    patch: async (url: string, body: any, token?: string) => {
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json',
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch(`${API_URL}${url}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(body),
+        });
+        return handleResponse(res);
+    },
+
     delete: async (url: string, body?: any, token?: string) => {
         const headers: HeadersInit = {
             'Content-Type': 'application/json',

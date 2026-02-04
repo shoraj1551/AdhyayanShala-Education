@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-change-this';
+import { config } from '../config/env.config';
+
+const JWT_SECRET = config.JWT_SECRET;
 
 export interface AuthRequest extends Request {
     user?: {
-        userId: string;
+        id: string;
         role: string;
     };
 }
@@ -19,7 +21,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     }
 
     try {
-        const user = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+        const user = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
         req.user = user;
         next();
     } catch (error) {

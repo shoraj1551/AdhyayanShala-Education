@@ -93,6 +93,10 @@ export function Topbar() {
                     </div>
                     <span className="text-sm font-medium text-card-foreground hidden sm:inline-block">{user?.email}</span>
                 </div>
+
+                <Button variant="ghost" size="icon" onClick={() => logout()} title="Sign Out">
+                    <LogOut className="h-4 w-4" />
+                </Button>
             </div>
         </header >
     );

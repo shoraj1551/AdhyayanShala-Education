@@ -33,7 +33,7 @@ export const getSettings = async (req: Request, res: Response) => {
 export const updateSettings = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const userId = req.user?.userId;
+        const userId = req.user?.id;
         // Verify instructor/admin logic should be here (middleware does generic role check)
         const settings = await LiveClassService.updateSettings(id, req.body);
         res.json(settings);
