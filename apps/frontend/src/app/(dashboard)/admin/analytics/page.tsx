@@ -25,7 +25,7 @@ export default function AdminAnalyticsPage() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const data = await api.get('/admin/analytics/dashboard', token);
+                const data = await api.get('/admin/analytics/dashboard', token || undefined);
                 setStats(data);
             } catch (error) {
                 console.error("Failed to fetch analytics:", error);
