@@ -268,7 +268,6 @@ export default function CourseEditorPage() {
                         <Button
                             variant="secondary"
                             className="bg-zinc-200 hover:bg-zinc-300 text-zinc-900"
-                            className="bg-zinc-200 hover:bg-zinc-300 text-zinc-900"
                             onClick={() => initiateAction('UNPUBLISH')}
                         >
                             Unpublish
