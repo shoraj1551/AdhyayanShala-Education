@@ -106,7 +106,7 @@ export default function TestEditorPage() {
             // Reset and refresh
             setEditingQuestionId(null);
             setFormData({
-                content: "",
+                text: "",
                 imageUrl: "",
                 points: 1,
                 explanation: "",
@@ -169,7 +169,7 @@ export default function TestEditorPage() {
                     <Button className="w-full mb-4" onClick={() => {
                         setEditingQuestionId(null);
                         setFormData({
-                            content: "",
+                            text: "",
                             imageUrl: "",
                             points: 1,
                             explanation: "",
