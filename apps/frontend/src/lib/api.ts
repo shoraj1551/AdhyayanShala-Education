@@ -133,4 +133,8 @@ async function handleResponse(res: Response) {
 export const submitTest = async (testId: string, answers: any[], token: string) => {
     return api.post(`/tests/${testId}/submit`, { answers }, token);
 }
+
+export const markLessonComplete = async (lessonId: string, token?: string) => {
+    return api.post('/progress/complete', { lessonId }, token);
+}
 export default api;

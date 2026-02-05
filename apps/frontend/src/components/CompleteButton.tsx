@@ -4,14 +4,17 @@ import { markLessonComplete } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { useAuth } from '@/context/AuthContext';
+
 export default function CompleteButton({ lessonId, nextLessonUrl }: { lessonId: string, nextLessonUrl?: string }) {
     const router = useRouter();
+    const { token } = useAuth();
     const [loading, setLoading] = useState(false);
 
     const handleComplete = async () => {
         setLoading(true);
         try {
-            await markLessonComplete(lessonId);
+            await markLessonComplete(lessonId, token || undefined);
             if (nextLessonUrl) {
                 router.push(nextLessonUrl);
             } else {
