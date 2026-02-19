@@ -40,6 +40,7 @@ export const register = async (req: Request, res: Response) => {
             },
         });
     } catch (error: any) {
+        Logger.error('[REGISTER] Error:', error);
         if (error instanceof z.ZodError) {
             return res.status(400).json({ message: 'Validation error', errors: (error as any).errors });
         }
