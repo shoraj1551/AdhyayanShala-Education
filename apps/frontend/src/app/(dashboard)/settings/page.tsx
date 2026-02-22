@@ -7,6 +7,7 @@ import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { PayoutSettings } from "@/components/settings/PayoutSettings";
+import { AvailabilitySettings } from "@/components/settings/AvailabilitySettings";
 import { Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -77,6 +78,14 @@ export default function SettingsPage() {
                                 Payouts
                             </TabsTrigger>
                         )}
+                        {isInstructor && (
+                            <TabsTrigger
+                                value="availability"
+                                className="rounded-xl px-8 py-3 data-[state=active]:bg-zinc-900 data-[state=active]:text-white data-[state=active]:shadow-lg font-bold transition-all duration-300"
+                            >
+                                Availability
+                            </TabsTrigger>
+                        )}
                         <TabsTrigger
                             value="security"
                             className="rounded-xl px-8 py-3 data-[state=active]:bg-zinc-900 data-[state=active]:text-white data-[state=active]:shadow-lg font-bold transition-all duration-300"
@@ -99,6 +108,12 @@ export default function SettingsPage() {
                 {isInstructor && (
                     <TabsContent value="payouts" className="space-y-4">
                         <PayoutSettings />
+                    </TabsContent>
+                )}
+
+                {isInstructor && (
+                    <TabsContent value="availability" className="space-y-4">
+                        <AvailabilitySettings />
                     </TabsContent>
                 )}
 

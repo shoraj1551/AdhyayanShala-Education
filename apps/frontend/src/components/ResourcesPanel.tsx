@@ -9,9 +9,10 @@ interface ResourcesPanelProps {
     courseId: string;
     brochureUrl?: string;
     authToken: string;
+    onSharePdf?: (url: string) => void;
 }
 
-export function ResourcesPanel({ courseId, brochureUrl, authToken }: ResourcesPanelProps) {
+export function ResourcesPanel({ courseId, brochureUrl, authToken, onSharePdf }: ResourcesPanelProps) {
     const handleDownload = () => {
         if (!brochureUrl) return;
         const a = document.createElement("a");
@@ -37,9 +38,16 @@ export function ResourcesPanel({ courseId, brochureUrl, authToken }: ResourcesPa
             {brochureUrl && (
                 <div className="flex items-center justify-between mb-3">
                     <Badge variant="default" className="bg-blue-600 text-white">Course Brochure</Badge>
-                    <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1">
-                        <Download className="h-4 w-4" /> Download
-                    </Button>
+                    <div className="flex gap-2">
+                        {onSharePdf && brochureUrl.toLowerCase().endsWith('.pdf') && (
+                            <Button variant="default" size="sm" onClick={() => onSharePdf(brochureUrl)} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+                                <FileText className="h-4 w-4" /> Share PDF
+                            </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1 border-zinc-700">
+                            <Download className="h-4 w-4" /> Download
+                        </Button>
+                    </div>
                 </div>
             )}
             {/* Placeholder for notes - in real app this would list saved notes */}

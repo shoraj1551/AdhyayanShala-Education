@@ -44,13 +44,15 @@ describe('CourseCard Component', () => {
         expect(screen.getByText('5 Modules')).toBeInTheDocument();
     });
 
-    it('shows "Enroll for Free" when price is 0', () => {
+    it('shows "Enroll Now" and price for free course', () => {
         render(<CourseCard course={mockCourse} />);
-        expect(screen.getByRole('button', { name: /Enroll for Free/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Enroll Now/i })).toBeInTheDocument();
+        expect(screen.getByText('₹0')).toBeInTheDocument();
     });
 
-    it('shows "Enroll ($10)" when price is > 0', () => {
-        render(<CourseCard course={{ ...mockCourse, price: 10 }} />);
-        expect(screen.getByRole('button', { name: /Enroll \(\$10\)/i })).toBeInTheDocument();
+    it('shows "Enroll Now" and price for paid course', () => {
+        render(<CourseCard course={{ ...mockCourse, price: 1000 }} />);
+        expect(screen.getByRole('button', { name: /Enroll Now/i })).toBeInTheDocument();
+        expect(screen.getByText('₹1,000')).toBeInTheDocument();
     });
 });

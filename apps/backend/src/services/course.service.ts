@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import CacheService from './cache.service';
 import { Prisma, CourseLevel } from '@prisma/client';
 import { randomInt } from 'node:crypto';
 import Logger from '../lib/logger';
@@ -15,6 +16,10 @@ import {
 } from '../utils/auth-helpers';
 
 export const listCourses = async (search?: string, excludeInstructorId?: string) => {
+    const cacheKey = `courses_list_${search || 'all'}_${excludeInstructorId || 'none'}`;
+    const cached = await CacheService.get<any>(cacheKey);
+    if (cached) return cached;
+
     const where: Prisma.CourseWhereInput = {
         isPublished: true,
     };
@@ -33,7 +38,7 @@ export const listCourses = async (search?: string, excludeInstructorId?: string)
         };
     }
 
-    return await prisma.course.findMany({
+    const courses = await prisma.course.findMany({
         where,
         select: {
             id: true,
@@ -55,6 +60,10 @@ export const listCourses = async (search?: string, excludeInstructorId?: string)
         },
         orderBy: { createdAt: 'desc' }
     });
+
+    // Cache for 2 minutes (120 seconds) - listings change more frequently
+    await CacheService.set(cacheKey, courses, 120);
+    return courses;
 };
 
 export const getCourseById = async (courseId: string) => {
@@ -136,14 +145,8 @@ export const createCourse = async (data: CreateCourseDTO) => {
 
     // Handle LIVE course settings
     if (data.type === 'LIVE') {
-        await prisma.liveClassSettings.create({
-            data: {
-                courseId: course.id,
-                platform: data.meetingPlatform || 'ZOOM',
-                meetingLink: data.meetingLink,
-                scheduleNote: data.schedule,
-            }
-        });
+        const { initializeSettings } = await import('./liveClass.service');
+        await initializeSettings(course.id, data.meetingPlatform || 'Jitsi', data.schedule);
     }
 
     return course;
@@ -274,6 +277,30 @@ export const getInstructorDashboardData = async (instructorId: string) => {
         enrolledAt: e.enrolledAt,
     }));
 
+    // 5. Fetch Upcoming Mentorship Bookings
+    const upcomingMentorship = await prisma.mentorshipBooking.findMany({
+        where: {
+            instructorId,
+            status: 'CONFIRMED',
+            date: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+        },
+        include: {
+            student: { select: { name: true, avatar: true, email: true } }
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+        take: 5
+    });
+
+    const formattedMentorship = upcomingMentorship.map(m => ({
+        id: m.id,
+        studentName: m.student.name || 'Student',
+        studentAvatar: m.student.avatar,
+        date: m.date,
+        startTime: m.startTime,
+        duration: m.duration,
+        meetingLink: `https://${process.env.JITSI_DOMAIN || 'meet.jit.si'}/mentorship-${m.id}`
+    }));
+
     return {
         stats: {
             totalCourses,
@@ -285,6 +312,7 @@ export const getInstructorDashboardData = async (instructorId: string) => {
         activeCourses,
         upcomingClasses,
         recentEnrollments: formattedRecentEnrollments,
+        upcomingMentorship: formattedMentorship
     };
 };
 

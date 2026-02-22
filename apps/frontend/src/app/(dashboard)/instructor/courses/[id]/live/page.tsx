@@ -18,6 +18,7 @@ export default function InstructorLiveClassPage() {
         id: string;
         title: string;
         type: string;
+        brochureUrl?: string;
     }
 
     const [loading, setLoading] = useState(true);
@@ -88,9 +89,9 @@ export default function InstructorLiveClassPage() {
                 domain={roomData.domain}
                 instructorName={(user as { name?: string })?.name || "Instructor"}
                 authToken={token || ""}
+                brochureUrl={course.brochureUrl}
                 onClose={() => router.push("/instructor/courses")}
             />
-            <ResourcesPanel courseId={course.id} brochureUrl={course.brochureUrl} authToken={token || ""} />
         </div>
     );
 }

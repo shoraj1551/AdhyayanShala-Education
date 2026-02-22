@@ -5,6 +5,22 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import path from 'path';
+import * as Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
+
+// Sentry Initialization
+if (config.SENTRY_DSN) {
+    Sentry.init({
+        dsn: config.SENTRY_DSN,
+        integrations: [
+            nodeProfilingIntegration(),
+        ],
+        // Performance Monitoring
+        tracesSampleRate: 1.0,
+        // Set sampling rate for profiling - this is relative to tracesSampleRate
+        profilesSampleRate: 1.0,
+    });
+}
 
 // Route Imports
 import authRoutes from './routes/auth.routes';
@@ -110,11 +126,25 @@ app.use('/api/admin/finance', adminFinanceRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
 
 // Error Handler - Must be last middleware
+if (config.SENTRY_DSN) {
+    Sentry.setupExpressErrorHandler(app);
+}
 app.use(errorHandler);
 
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
     app.listen(port, () => {
         Logger.info(`⚡️[server]: Server is running at http://localhost:${port}`);
+
+        // Start Reminder Jobs (Every 5 minutes)
+        setInterval(async () => {
+            try {
+                const { sendMentorshipReminders, sendAllClassReminders } = await import('./services/notification.service');
+                await sendMentorshipReminders(15);
+                await sendAllClassReminders(15);
+            } catch (err) {
+                Logger.error('[ReminderJob] Error:', err);
+            }
+        }, 5 * 60 * 1000);
     });
 }
 

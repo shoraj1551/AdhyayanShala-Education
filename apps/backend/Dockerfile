@@ -1,29 +1,39 @@
-# Base image
-FROM node:20-alpine
+# Build stage
+FROM node:20-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy root workspace files
 COPY package*.json ./
+COPY turbo.json ./
 COPY apps/backend/package*.json ./apps/backend/
-COPY packages/shared/package*.json ./packages/shared/
+COPY apps/backend/prisma ./apps/backend/prisma/
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY . .
+COPY apps/backend ./apps/backend/
 
-# Generate Prisma Client
-WORKDIR /app/apps/backend
-RUN npx prisma generate
+# Generate Prisma Client & Build
+RUN npx turbo run build --filter=backend
 
-# Build the app
-RUN npm run build
+# Production stage
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Copy built files and node_modules
+COPY --from=builder /app/apps/backend/dist ./dist
+COPY --from=builder /app/apps/backend/node_modules ./node_modules
+COPY --from=builder /app/apps/backend/package*.json ./
+COPY --from=builder /app/apps/backend/prisma ./prisma/
 
 # Expose port
 EXPOSE 3001
 
-# Start the application
-CMD ["npm", "start"]
+# Run the app
+CMD ["npm", "run", "deploy"]

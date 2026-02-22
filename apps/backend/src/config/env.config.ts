@@ -29,6 +29,10 @@ const envSchema = z.object({
 
     // Feature Flags
     ENABLE_MOCK_PAYMENTS: z.string().default('false').transform(val => val === 'true'),
+
+    // Caching & Monitoring
+    REDIS_URL: z.string().optional(),
+    SENTRY_DSN: z.string().optional(),
 });
 
 const parseEnv = () => {

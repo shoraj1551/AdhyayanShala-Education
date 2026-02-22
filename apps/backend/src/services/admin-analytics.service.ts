@@ -1,6 +1,11 @@
 import prisma from '../lib/prisma';
+import CacheService from './cache.service';
 
 export const getDashboardStats = async () => {
+    const cacheKey = 'admin_dashboard_stats';
+    const cachedData = await CacheService.get<any>(cacheKey);
+    if (cachedData) return cachedData;
+
     // 1. Total Users
     const totalUsers = await prisma.user.count();
     const totalStudents = await prisma.user.count({ where: { role: 'STUDENT' } });
@@ -41,11 +46,16 @@ export const getDashboardStats = async () => {
         }
     });
 
-    return {
+    const stats = {
         users: { total: totalUsers, students: totalStudents, instructors: totalInstructors },
         revenue: totalRevenue,
         courses: { total: totalCourses, published: publishedCourses },
         recentUsers,
         popularCourses
     };
+
+    // Cache for 5 minutes (300 seconds)
+    await CacheService.set(cacheKey, stats, 300);
+
+    return stats;
 };

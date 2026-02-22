@@ -42,6 +42,15 @@ interface DashboardData {
         courseTitle: string;
         enrolledAt: string;
     }>;
+    upcomingMentorship?: Array<{
+        id: string;
+        studentName: string;
+        studentAvatar?: string;
+        date: string;
+        startTime: string;
+        duration: number;
+        meetingLink: string;
+    }>;
 }
 
 export function InstructorDashboard({ user }: { user: { name: string; email: string; avatar?: string } }) {
@@ -77,7 +86,7 @@ export function InstructorDashboard({ user }: { user: { name: string; email: str
         return <div className="text-center py-12 text-destructive">Failed to load dashboard data. Please try again later.</div>;
     }
 
-    const { stats, activeCourses, upcomingClasses, recentEnrollments } = data;
+    const { stats, activeCourses, upcomingClasses, recentEnrollments, upcomingMentorship = [] } = data;
 
     return (
         <div className="space-y-8 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -355,6 +364,42 @@ export function InstructorDashboard({ user }: { user: { name: string; email: str
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Upcoming Mentorship */}
+                    {upcomingMentorship.length > 0 && (
+                        <Card className="border-indigo-500/20 shadow-md shadow-indigo-500/5">
+                            <CardHeader className="bg-indigo-500/5 pb-4 border-b">
+                                <CardTitle className="text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                                    <Clock className="h-5 w-5" />
+                                    Upcoming Mentorship
+                                </CardTitle>
+                                <CardDescription className="pt-2">1-on-1 sessions with students.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <div className="space-y-4">
+                                    {upcomingMentorship.map((m) => (
+                                        <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src={m.studentAvatar} />
+                                                    <AvatarFallback>{m.studentName.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="text-sm font-semibold">{m.studentName}</p>
+                                                    <p className="text-[10px] text-muted-foreground">{format(new Date(m.date), 'MMM d, yyyy')} • {m.startTime}</p>
+                                                </div>
+                                            </div>
+                                            <a href={m.meetingLink} target="_blank" rel="noreferrer">
+                                                <Button size="sm" variant="outline" className="h-7 text-[10px] px-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
+                                                    Join
+                                                </Button>
+                                            </a>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Quick Tips or Announcements could go here */}
                     <Card className="bg-primary/5 border-none">

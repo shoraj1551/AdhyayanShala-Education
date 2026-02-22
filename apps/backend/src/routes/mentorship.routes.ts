@@ -1,17 +1,19 @@
+
 import { Router } from 'express';
-import { authenticateToken, authorizeRole } from '../middleware/auth.middleware';
 import * as MentorshipController from '../controllers/mentorship.controller';
+import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Public / Student endpoints
-router.get('/instructors/:id/availability', MentorshipController.getInstructorAvailability);
-router.post('/book', authenticateToken, MentorshipController.bookSession);
-router.get('/sessions', authenticateToken, MentorshipController.getMySessions);
+// Instructor routes
+router.get('/slots', authenticateToken, MentorshipController.getSlots);
+router.post('/slots', authenticateToken, MentorshipController.updateSlots);
 
-// Instructor endpoints
-router.get('/availability', authenticateToken, authorizeRole(['INSTRUCTOR']), MentorshipController.getMyAvailability);
-router.post('/availability', authenticateToken, authorizeRole(['INSTRUCTOR']), MentorshipController.updateAvailability);
-router.post('/fee', authenticateToken, authorizeRole(['INSTRUCTOR']), MentorshipController.updateFee);
+// Student routes
+router.get('/instructors', authenticateToken, MentorshipController.listInstructors);
+router.get('/instructors/:id/availability', authenticateToken, MentorshipController.getInstructorAvailability);
+router.post('/book', authenticateToken, MentorshipController.bookSession);
+router.get('/my-bookings', authenticateToken, MentorshipController.getMyBookings);
+router.get('/sessions', authenticateToken, MentorshipController.getMyBookings);
 
 export default router;

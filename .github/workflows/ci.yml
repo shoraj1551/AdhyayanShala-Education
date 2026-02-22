@@ -1,45 +1,41 @@
-name: CI
+name: Production CI/CD
 
 on:
-    push:
-        branches: ["main"]
-    pull_request:
-        branches: ["main"]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-        strategy:
-            matrix:
-                node-version: [20.x]
+    steps:
+      - uses: actions/checkout@v4
 
-        steps:
-            - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: "npm"
+      - name: Install dependencies
+        run: npm install
 
-            - name: Install Dependencies
-              run: npm ci
+      - name: Run Lint
+        run: npx turbo run lint
 
-            - name: Generate Prisma Client
-              run: |
-                  cd apps/backend
-                  npx prisma generate
+      - name: Run Tests
+        run: npx turbo run test
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
 
-            - name: Lint
-              run: npm run lint
+      - name: Build Backend
+        run: npx turbo run build --filter=backend
 
-            - name: Build Backend
-              run: |
-                  cd apps/backend
-                  npm run build
+      - name: Build Frontend
+        run: npx turbo run build --filter=frontend
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
-            - name: Build Frontend
-              run: |
-                  cd apps/frontend
-                  npm run build
+  # Future: Add Deployment steps to AWS/Vercel here

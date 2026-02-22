@@ -17,7 +17,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
-        return res.status(401).json({ message: 'Authentication required' });
+        return res.status(401).json({ error: { message: 'Authentication required', code: 'UNAUTHORIZED' } });
     }
 
     try {
@@ -25,7 +25,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
         req.user = user;
         next();
     } catch (error) {
-        return res.status(403).json({ message: 'Invalid or expired token' });
+        return res.status(403).json({ error: { message: 'Invalid or expired token', code: 'FORBIDDEN' } });
     }
 };
 
@@ -50,7 +50,7 @@ export const authenticateTokenOptional = (req: AuthRequest, res: Response, next:
 export const authorizeRole = (roles: string[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
         if (!req.user || !roles.includes(req.user.role)) {
-            return res.status(403).json({ message: 'Insufficient permissions' });
+            return res.status(403).json({ error: { message: 'Insufficient permissions', code: 'FORBIDDEN' } });
         }
         next();
     };

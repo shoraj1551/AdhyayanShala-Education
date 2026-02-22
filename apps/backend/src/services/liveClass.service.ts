@@ -9,6 +9,19 @@ export const getSettings = async (courseId: string) => {
     });
 };
 
+export const initializeSettings = async (courseId: string, platform?: string, scheduleNote?: string) => {
+    return await prisma.liveClassSettings.upsert({
+        where: { courseId },
+        update: {},
+        create: {
+            courseId,
+            platform: platform || 'Jitsi',
+            meetingLink: `https://${process.env.JITSI_DOMAIN || 'meet.jit.si'}/shoraj-${courseId}`,
+            scheduleNote: scheduleNote || '',
+        }
+    });
+};
+
 export const updateSettings = async (courseId: string, data: {
     platform?: string,
     meetingLink?: string,

@@ -1,28 +1,43 @@
-# Base image
-FROM node:20-alpine
+# Build stage
+FROM node:20-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy root workspace files
 COPY package*.json ./
+COPY turbo.json ./
 COPY apps/frontend/package*.json ./apps/frontend/
-COPY packages/shared/package*.json ./packages/shared/
 
 # Install dependencies
 RUN npm install
 
 # Copy source code
-COPY . .
+COPY apps/frontend ./apps/frontend/
 
-# Build the app
-WORKDIR /app/apps/frontend
+# Set production env for build
+ENV NODE_ENV=production
+# These can be overridden at build time
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN npm run build
+
+# Build (Turbo)
+RUN npx turbo run build --filter=frontend
+
+# Production stage
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Copy built public folder and standalone server
+COPY --from=builder /app/apps/frontend/public ./public
+COPY --from=builder /app/apps/frontend/.next/standalone ./
+COPY --from=builder /app/apps/frontend/.next/static ./.next/static
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Run the app
+CMD ["node", "server.js"]
