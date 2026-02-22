@@ -1,13 +1,13 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import * as CourseService from './course.service';
+import * as FinanceService from './finance.service';
 
 import { config } from '../config/env.config';
 import Logger from '../lib/logger';
 
-
 // Lazy Init to prevent startup crash if keys are missing (e.g. in Dev/Mock mode)
-let razorpay: any;
+let razorpay: InstanceType<typeof Razorpay> | null = null;
 if (config.RAZORPAY_KEY_ID && config.RAZORPAY_KEY_SECRET) {
     razorpay = new Razorpay({
         key_id: config.RAZORPAY_KEY_ID,
@@ -87,17 +87,33 @@ export const verifyPayment = async (
     razorpay_payment_id: string,
     razorpay_signature: string,
     userId: string,
-    courseId: string,
-    billingDetails: any
+    courseId: string
 ) => {
     const secret = config.RAZORPAY_KEY_SECRET || '';
 
-    // Fetch Course Price for Ledger
+    // Fetch Course details for Instructor ID
     const course = await prisma.course.findUnique({
         where: { id: courseId },
-        select: { price: true, title: true }
+        select: { price: true, title: true, instructorId: true }
     });
-    const amount = course?.price || 0;
+    const instructorId = course?.instructorId;
+
+    // Fetch actual amount from Razorpay Order notes if possible or re-calculate
+    // Better: Fetch order from Razorpay to get the EXACT amount paid
+    let amount = 0;
+    try {
+        if (razorpay && !razorpay_order_id.startsWith('order_mock_')) {
+            const order: any = await razorpay.orders.fetch(razorpay_order_id);
+            amount = order.amount / 100; // convert from paise
+        } else {
+            // Mock or Fallback: re-calculate based on plan if available, or just use price
+            // In a real app, we'd store the calculated amount in a PendingOrder table
+            amount = course?.price || 0;
+        }
+    } catch (e) {
+        Logger.error('[Payment] Error fetching order amount', e);
+        amount = course?.price || 0;
+    }
 
     // Handle Mock Payment Verification
     if (razorpay_order_id.startsWith('order_mock_')) {
@@ -118,6 +134,11 @@ export const verifyPayment = async (
                     providerPaymentId: `pay_mock_${Date.now()}`,
                 }
             });
+
+            // Credit Instructor Wallet (Mock Path)
+            if (instructorId) {
+                await FinanceService.recordCourseSale(instructorId, courseId, amount);
+            }
         }
         return { success: true, message: "Mock Payment verified and enrolled" };
     }
@@ -147,6 +168,11 @@ export const verifyPayment = async (
                     signature: razorpay_signature
                 }
             });
+
+            // Credit Instructor Wallet (Razorpay Path)
+            if (instructorId) {
+                await FinanceService.recordCourseSale(instructorId, courseId, amount);
+            }
         }
 
         return { success: true, message: "Payment verified and enrolled" };

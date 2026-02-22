@@ -1,18 +1,24 @@
-
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as LiveClassService from '../services/liveClass.service';
+import { generateJitsiToken } from '../services/liveToken.service';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { liveSettingsSchema, scheduleSchema, saveMediaSchema } from '../validations/liveClass.schema';
+import { verifyCourseOwnership } from '../utils/auth-helpers';
+import prisma from '../lib/prisma';
+import { NotFoundError, UnauthorizedError } from '../lib/errors';
 
-export const getSettings = async (req: Request, res: Response) => {
+export const getSettings = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
         const settings = await LiveClassService.getSettings(id);
         const schedules = await LiveClassService.getSchedules(id);
 
+        const recordings = (settings?.recordings as any[]) || [];
+        const notes = (settings?.notes as any[]) || [];
+
         // Auto-generate schedule note from schedules if not manually set
         let scheduleNote = settings?.scheduleNote || '';
         if (schedules.length > 0 && !scheduleNote) {
-            // Filter out schedules with null dayOfWeek
             const validSchedules = schedules.filter(s => s.dayOfWeek !== null) as Array<{ dayOfWeek: number; startTime: string }>;
             if (validSchedules.length > 0) {
                 scheduleNote = LiveClassService.generateScheduleNote(validSchedules);
@@ -22,47 +28,71 @@ export const getSettings = async (req: Request, res: Response) => {
         res.json({
             data: {
                 settings: settings ? { ...settings, scheduleNote } : null,
-                schedules
+                schedules,
+                recordings,
+                notes
             }
         });
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching live class settings' });
+        next(error);
     }
 };
 
-export const updateSettings = async (req: AuthRequest, res: Response) => {
+export const updateSettings = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
         const userId = req.user?.id;
-        // Verify instructor/admin logic should be here (middleware does generic role check)
-        const settings = await LiveClassService.updateSettings(id, req.body);
+        if (!userId) throw new UnauthorizedError();
+
+        await verifyCourseOwnership(id, userId);
+
+        const validatedData = liveSettingsSchema.parse(req.body);
+        const settings = await LiveClassService.updateSettings(id, validatedData);
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Error updating live settings' });
+        next(error);
     }
 };
 
-export const addSchedule = async (req: AuthRequest, res: Response) => {
+export const addSchedule = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params; // courseId
-        const schedule = await LiveClassService.addSchedule(id, req.body);
+        const userId = req.user?.id;
+        if (!userId) throw new UnauthorizedError();
+
+        await verifyCourseOwnership(id, userId);
+
+        const validatedData = scheduleSchema.parse(req.body);
+        const schedule = await LiveClassService.addSchedule(id, validatedData);
         res.json(schedule);
     } catch (error) {
-        res.status(500).json({ message: 'Error adding schedule' });
+        next(error);
     }
 };
 
-export const deleteSchedule = async (req: AuthRequest, res: Response) => {
+export const deleteSchedule = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { scheduleId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) throw new UnauthorizedError();
+
+        // Need to check ownership of the course this schedule belongs to
+        const schedule = await prisma.classSchedule.findUnique({
+            where: { id: scheduleId },
+            select: { courseId: true }
+        });
+        if (!schedule) throw new NotFoundError("Schedule");
+
+        await verifyCourseOwnership(schedule.courseId, userId);
+
         await LiveClassService.deleteSchedule(scheduleId);
         res.json({ message: 'Schedule deleted' });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting schedule' });
+        next(error);
     }
 };
 
-export const downloadCalendar = async (req: Request, res: Response) => {
+export const downloadCalendar = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
         const icsContent = await LiveClassService.getCourseCalendar(id);
@@ -70,6 +100,85 @@ export const downloadCalendar = async (req: Request, res: Response) => {
         res.setHeader('Content-Disposition', `attachment; filename=course-${id}.ics`);
         res.send(icsContent);
     } catch (error) {
-        res.status(500).json({ message: 'Error generating calendar' });
+        next(error);
+    }
+};
+
+export const generateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id: courseId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) throw new UnauthorizedError();
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, name: true, email: true, role: true }
+        });
+        if (!user) throw new NotFoundError("User");
+
+        const jitsiRole = (user.role === 'INSTRUCTOR' || user.role === 'ADMIN') ? 'MODERATOR' : user.role;
+        const tokenData = generateJitsiToken(courseId, {
+            name: user.name || (jitsiRole === 'MODERATOR' ? 'Instructor' : 'Student'),
+            email: user.email,
+            role: jitsiRole,
+        });
+
+        res.json(tokenData);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const saveRecording = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id: courseId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) throw new UnauthorizedError();
+
+        await verifyCourseOwnership(courseId, userId);
+
+        const { url, title } = saveMediaSchema.parse(req.body);
+
+        const settings = await prisma.liveClassSettings.findUnique({ where: { courseId } });
+        if (!settings) throw new NotFoundError("Live class settings");
+
+        const recordings = (settings.recordings as any[]) || [];
+        recordings.unshift({ url, title: title || 'Class Recording', recordedAt: new Date().toISOString() });
+
+        await prisma.liveClassSettings.update({
+            where: { courseId },
+            data: { recordings }
+        });
+
+        res.json({ message: 'Recording saved', recordings });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const saveNotes = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id: courseId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) throw new UnauthorizedError();
+
+        await verifyCourseOwnership(courseId, userId);
+
+        const { url, title } = saveMediaSchema.parse(req.body);
+
+        const settings = await prisma.liveClassSettings.findUnique({ where: { courseId } });
+        if (!settings) throw new NotFoundError("Live class settings");
+
+        const notes = (settings.notes as any[]) || [];
+        notes.unshift({ url, title: title || 'Class Notes', savedAt: new Date().toISOString() });
+
+        await prisma.liveClassSettings.update({
+            where: { courseId },
+            data: { notes }
+        });
+
+        res.json({ message: 'Notes saved', notes });
+    } catch (error) {
+        next(error);
     }
 };

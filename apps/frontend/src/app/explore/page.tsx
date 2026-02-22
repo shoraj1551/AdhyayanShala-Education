@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { BookOpen, FileText, Calendar, Clock, Star } from "lucide-react";
+import { BookOpen, FileText, Calendar, Clock, Star, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -49,16 +49,8 @@ export default function ExplorePage() {
         fetchData();
     }, []);
 
-    // Mock Data for "Upcoming" sections since backend might be empty
-    const upcomingCourses = [
-        { id: 'uc1', title: 'Advanced AI Architectures', date: 'March 10, 2026', instructor: 'Dr. A. Gupta', level: 'Advanced' },
-        { id: 'uc2', title: 'Full Stack with Rust', date: 'April 05, 2026', instructor: 'J. Smith', level: 'Intermediate' }
-    ];
-
-    const upcomingTests = [
-        { id: 'ut1', title: 'National Scholarship Exam', date: 'Feb 28, 2026', duration: '90 mins' },
-        { id: 'ut2', title: 'Coding Olympiad Finals', date: 'March 15, 2026', duration: '120 mins' }
-    ];
+    // Data fetching works, but we are removing hardcoded "Upcoming" sections as per user request.
+    // If we want to show upcoming items, we should filter the real data (courses/tests) once the API supports 'startDate' or similar fields.
 
     const container = {
         hidden: { opacity: 0 },
@@ -76,12 +68,24 @@ export default function ExplorePage() {
     return (
         <div className="min-h-screen bg-background pb-20">
             {/* Header */}
-            <div className="bg-primary/5 py-16 border-b">
-                <div className="container px-4 text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">Explore AdhyayanShala</h1>
-                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                        Discover top-rated courses and practice tests to accelerate your career.
-                    </p>
+            <div className="bg-primary/5 py-12 border-b">
+                <div className="container px-4">
+                    <div className="flex flex-col md:flex-row items-center gap-4 mb-4 md:mb-0 relative">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute left-0 top-1/2 -translate-y-1/2 md:static md:translate-y-0"
+                            onClick={() => window.history.back()}
+                        >
+                            <ArrowLeft className="h-6 w-6" />
+                        </Button>
+                        <div className="w-full text-center">
+                            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">Explore AdhyayanShala</h1>
+                            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                                Discover top-rated courses and practice tests to accelerate your career.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -156,36 +160,7 @@ export default function ExplorePage() {
                             )}
                         </div>
 
-                        {/* Upcoming Courses */}
-                        <div>
-                            <div className="flex items-center gap-2 mb-6">
-                                <Calendar className="h-6 w-6 text-indigo-500" />
-                                <h2 className="text-2xl font-bold">Upcoming Courses</h2>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {upcomingCourses.map((course) => (
-                                    <Card key={course.id} className="bg-gradient-to-br from-card to-secondary/30">
-                                        <CardHeader>
-                                            <div className="flex justify-between">
-                                                <Badge className="bg-indigo-500 hover:bg-indigo-600 text-white">Coming Soon</Badge>
-                                                <span className="text-sm font-medium text-muted-foreground">{course.date}</span>
-                                            </div>
-                                            <CardTitle className="mt-2">{course.title}</CardTitle>
-                                            <CardDescription>Instructor: {course.instructor}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <Star className="h-4 w-4 text-yellow-500" />
-                                                <span>Level: {course.level}</span>
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button variant="outline" className="w-full">Notify Me</Button>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Upcoming Courses Section Removed as per request to delete dummy data */}
                     </div>
                 )}
 
@@ -234,35 +209,7 @@ export default function ExplorePage() {
                             )}
                         </div>
 
-                        {/* Upcoming Tests */}
-                        <div>
-                            <div className="flex items-center gap-2 mb-6">
-                                <Calendar className="h-6 w-6 text-green-600" />
-                                <h2 className="text-2xl font-bold">Upcoming Tests</h2>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {upcomingTests.map((test) => (
-                                    <Card key={test.id} className="border-green-200 bg-green-50/30 dark:bg-green-900/10 dark:border-green-900">
-                                        <CardHeader>
-                                            <div className="flex justify-between">
-                                                <Badge className="bg-green-600 hover:bg-green-700 text-white">Registration Open</Badge>
-                                                <span className="text-sm font-medium text-muted-foreground">{test.date}</span>
-                                            </div>
-                                            <CardTitle className="mt-2">{test.title}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="flex items-center gap-2 text-sm">
-                                                <Clock className="h-4 w-4" />
-                                                <span>Duration: {test.duration}</span>
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button variant="outline" className="w-full border-green-200 hover:bg-green-50 text-green-700 dark:border-green-800 dark:hover:bg-green-900 dark:text-green-400">Register Now</Button>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Upcoming Tests Section Removed as per request to delete dummy data */}
                     </div>
                 )}
             </div>

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # Shoraj Learning Platform
-=======
-# AdhyayanShala Education - Educational Platform
->>>>>>> 1bb61863ba5fb29baf0ddabf083c633ac70a9082
 
 A scalable, secure, and product-grade learning platform for hosting courses and online tests.
 
@@ -20,23 +16,22 @@ This project is a Monorepo:
 
 ## Getting Started
 
-1.  **Install Dependencies**:
+1. **Install Dependencies**:
+
     ```bash
     npm install
     ```
 
-2.  **Run Locally**:
+2. **Run Locally**:
+
     ```bash
     npm run dev
     ```
 
 ## Development
 
-<<<<<<< HEAD
-- **Backend**: Located in `apps/backend`. Uses Prisma for DB management.
-- **Frontend**: Located in `apps/frontend`.
-=======
 ### Frontend
+
 - **[Next.js 15](https://nextjs.org/)** - React framework with App Router and Turbopack
 - **[TypeScript](https://www.typescriptlang.org/)** - Type-safe development
 - **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first styling
@@ -45,6 +40,7 @@ This project is a Monorepo:
 - **[TipTap](https://tiptap.dev/)** - Rich text editor for content creation
 
 ### Backend & Services
+
 - **[Supabase](https://supabase.com/)** - Backend-as-a-Service
   - PostgreSQL database with optimized indexes
   - Authentication with role-based access control
@@ -55,6 +51,7 @@ This project is a Monorepo:
 - **[Vercel](https://vercel.com/)** - Deployment and hosting
 
 ### Development Tools
+
 - **[Zod](https://zod.dev/)** - TypeScript-first schema validation
 - **ESLint** - Code linting and formatting
 - **Prettier** - Code formatting
@@ -62,23 +59,27 @@ This project is a Monorepo:
 ## 📦 Installation
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 - Supabase account
 - Stripe account
 
 ### Clone Repository
+
 ```bash
 git clone https://github.com/shorajtomer/shorajtomer.me.git
 cd shorajtomer.me
 ```
 
 ### Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### Environment Setup
+
 Create a `.env.local` file in the root directory:
 
 ```env
@@ -106,12 +107,14 @@ NEXTAUTH_SECRET=your_nextauth_secret_key
 ```
 
 ### Database Setup
+
 1. Create a new Supabase project
 2. Run the SQL schema from `DEPLOYMENT.md`
 3. Configure authentication settings
 4. Update environment variables
 
 ### Run Development Server
+
 ```bash
 npm run dev
 ```
@@ -166,6 +169,7 @@ src/
 ## 🎯 Key Pages & Features
 
 ### Public Pages
+
 - **`/`** - Homepage with hero section and feature overview
 - **`/about`** - Personal background and professional journey
 - **`/blog`** - Technical articles with search and categories
@@ -177,16 +181,19 @@ src/
 - **`/youtube`** - YouTube channel integration
 
 ### Authentication
+
 - **`/signin`** - User login with email/password
 - **`/signup`** - User registration and account creation
 - Protected routes with authentication middleware
 
 ### User Dashboard
+
 - **`/dashboard`** - Personal overview and progress tracking
 - **`/dashboard/profile`** - Profile management and settings
 - **`/dashboard/settings`** - Account preferences and configuration
 
 ### Admin Panel
+
 - **`/admin`** - Admin dashboard with analytics
 - **`/admin/users`** - User management and administration
 - **`/admin/content/*`** - Content management for all types
@@ -195,6 +202,7 @@ src/
 ## 🛠 Development
 
 ### Available Scripts
+
 ```bash
 # Development
 npm run dev          # Start development server
@@ -207,7 +215,9 @@ npm run type-check   # TypeScript type checking
 ```
 
 ### Code Quality
+
 The project includes comprehensive code quality tools:
+
 - **ESLint** for code linting
 - **TypeScript** for type safety
 - **Prettier** for consistent formatting
@@ -216,12 +226,14 @@ The project includes comprehensive code quality tools:
 ## 📊 Analytics & Monitoring
 
 ### Built-in Analytics
+
 - User engagement tracking
 - Content performance metrics
 - Revenue and enrollment analytics
 - Admin dashboard with key insights
 
 ### External Integrations
+
 - Vercel Analytics for performance monitoring
 - Supabase metrics for database insights
 - Stripe dashboard for payment analytics
@@ -229,31 +241,38 @@ The project includes comprehensive code quality tools:
 ## 🔧 Configuration
 
 ### Admin Access
+
 Add admin email addresses to the `ADMIN_EMAILS` environment variable:
+
 ```env
 ADMIN_EMAILS=admin@example.com,admin2@example.com
 ```
 
 ### Payment Configuration
+
 Configure Stripe products and pricing in the Stripe dashboard or through the admin panel.
 
 ### Content Management
+
 All content can be managed through the admin panel at `/admin` after authentication.
 
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
+
 1. Connect your GitHub repository to Vercel
 2. Configure environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
 ### Manual Deployment
+
 ```bash
 npm run build
 npm run start
 ```
 
 See `DEPLOYMENT.md` for detailed deployment instructions including:
+
 - Supabase configuration
 - Stripe webhook setup
 - Environment variable configuration
@@ -268,6 +287,7 @@ See `DEPLOYMENT.md` for detailed deployment instructions including:
 5. Open a Pull Request
 
 ### Development Guidelines
+
 - Follow TypeScript best practices
 - Use Tailwind CSS for styling
 - Implement proper error handling
@@ -290,8 +310,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For support, questions, or feedback:
+
 - Create an issue in the repository
-- Email: contact@shorajtomer.me
+- Email: <contact@shorajtomer.me>
 - Website: [shorajtomer.me](https://shorajtomer.me)
 - LinkedIn: [Shoraj Tomer](https://linkedin.com/in/shorajtomer)
 
@@ -299,4 +320,3 @@ For support, questions, or feedback:
 
 Built with ❤️ by [Shoraj Tomer](https://github.com/shorajtomer)  
 🌐 Live at [shorajtomer.me](https://shorajtomer.me)
->>>>>>> 1bb61863ba5fb29baf0ddabf083c633ac70a9082

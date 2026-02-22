@@ -5,15 +5,16 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
     LayoutDashboard,
+    Library,
+    LogOut,
+    Settings,
+    TrendingUp,
+    Globe,
+    IndianRupee,
     BookOpen,
     GraduationCap,
-    Settings,
-    LogOut,
-    Library,
     History,
-    Plus,
-    IndianRupee,
-    TrendingUp
+    Plus
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -40,6 +41,7 @@ const instructorItems = [
 
 const adminItems = [
     { title: "Admin Overview", href: "/dashboard", icon: LayoutDashboard },
+    { title: "Site Content", href: "/admin/content", icon: Globe },
     { title: "Analytics", href: "/admin/analytics", icon: TrendingUp },
     { title: "Platform Content", href: "/admin/courses", icon: Library },
     { title: "User Management", href: "/admin/users", icon: BookOpen },

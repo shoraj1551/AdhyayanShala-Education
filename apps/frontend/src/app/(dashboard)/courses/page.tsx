@@ -5,9 +5,9 @@ import { api } from "@/lib/api";
 import { CourseCard } from "@/components/course-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Clock, TrendingUp, DollarSign, Users, Filter } from "lucide-react";
+import { Search, Clock, TrendingUp, Users, Filter, ArrowLeft, Library } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
     Select,
     SelectContent,
@@ -15,6 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { WaitlistForm } from "@/components/waitlist-form";
 
 interface Course {
     id: string;
@@ -62,7 +63,6 @@ export default function CoursesPage() {
                     params.append('search', searchQuery.trim());
                 }
 
-                // For instructors: exclude their own courses (market research)
                 if (isInstructor && user?.id) {
                     params.append('excludeInstructor', user.id);
                 }
@@ -70,8 +70,6 @@ export default function CoursesPage() {
                 if (params.toString()) {
                     url += `?${params.toString()}`;
                 }
-
-                console.log('Fetching courses from:', url);
 
                 const [coursesData, enrolledData] = await Promise.all([
                     api.get(url, token ?? undefined),
@@ -90,25 +88,20 @@ export default function CoursesPage() {
                     };
                 });
 
-                // Sorting Logic: Not Enrolled -> In Progress -> Completed
                 mergedCourses.sort((a: any, b: any) => {
                     const getWeight = (c: any) => {
                         if (!c.isEnrolled) return 0;
                         if (c.progress < 100) return 1;
                         return 2;
                     };
-
                     const weightA = getWeight(a);
                     const weightB = getWeight(b);
-
                     if (weightA !== weightB) return weightA - weightB;
-
-                    return 0; // Maintain original server sort (usually recency) within groups
+                    return 0;
                 });
 
                 setCourses(mergedCourses);
 
-                // Extract unique instructors
                 const uniqueInstructors = Array.from(
                     new Map(
                         coursesData
@@ -129,78 +122,141 @@ export default function CoursesPage() {
         return () => clearTimeout(timer);
     }, [token, searchQuery, isInstructor, user?.id]);
 
-    // Filter courses by instructor and enrollment status
     let filteredCourses = instructorFilter === "all"
         ? courses
         : courses.filter(c => c.instructor?.id === instructorFilter);
 
-    // Filter by enrollment status (dropdown override)
     if (enrollmentFilter === "enrolled") {
         filteredCourses = filteredCourses.filter(c => c.isEnrolled);
     } else if (enrollmentFilter === "not-enrolled") {
         filteredCourses = filteredCourses.filter(c => !c.isEnrolled);
     }
 
-    // Separate courses by type and recency
     const liveCourses = filteredCourses.filter(c => c.type === 'LIVE');
-
-    // For "Recent", we explicitly sort by date regardless of enrollment
     const recentCourses = [...filteredCourses]
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 6);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">
-                        {isInstructor ? "Market Research" : "Browse Courses"}
-                    </h2>
-                    <p className="text-muted-foreground">
-                        {isInstructor
-                            ? "Analyze market trends and competitor courses to plan your next bestseller."
-                            : "Explore our catalog of courses to enhance your skills."}
-                    </p>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-72">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder={isInstructor ? "Search competitors..." : "Search courses..."}
-                            className="pl-8"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+        <div className="space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto px-4 py-6">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="rounded-full hover:bg-zinc-100">
+                        <ArrowLeft className="h-6 w-6 text-zinc-600" />
+                    </Button>
+                    <div>
+                        <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                            {isInstructor ? "Market Research" : "Browse Courses"}
+                        </h2>
+                        <p className="text-muted-foreground text-lg">
+                            {isInstructor
+                                ? "Analyze market trends and discover what students are learning."
+                                : "Explore our catalog of world-class courses."}
+                        </p>
                     </div>
-                    {!isInstructor && instructors.length > 0 && (
-                        <Select value={instructorFilter} onValueChange={setInstructorFilter}>
-                            <SelectTrigger className="w-[180px]">
-                                <Filter className="h-4 w-4 mr-2" />
-                                <SelectValue placeholder="All Instructors" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Instructors</SelectItem>
-                                {instructors.map(instructor => (
-                                    <SelectItem key={instructor.id} value={instructor.id}>
-                                        {instructor.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    )}
                 </div>
+            </div>
+
+            {/* Instructor Metrics Row */}
+            {isInstructor && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <Card className="bg-indigo-50/50 border-indigo-100 shadow-sm border-none backdrop-blur-sm">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20">
+                                    <Library className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Total Active</p>
+                                    <h4 className="text-2xl font-black text-indigo-950">{courses.length}+</h4>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-purple-50/50 border-purple-100 shadow-sm border-none backdrop-blur-sm">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-purple-500 text-white rounded-xl shadow-lg shadow-purple-500/20">
+                                    <TrendingUp className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-purple-400 uppercase tracking-wider">Market Demand</p>
+                                    <h4 className="text-2xl font-black text-purple-950">High</h4>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-emerald-50/50 border-emerald-100 shadow-sm border-none backdrop-blur-sm">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20">
+                                    <Users className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Active Users</p>
+                                    <h4 className="text-2xl font-black text-emerald-950">2.4k+</h4>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-amber-50/50 border-amber-100 shadow-sm border-none backdrop-blur-sm">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-500/20">
+                                    <Clock className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">Avg Completion</p>
+                                    <h4 className="text-2xl font-black text-amber-950">68%</h4>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Search and Filters Row */}
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder={isInstructor ? "Search competitors and keywords..." : "What do you want to learn today?"}
+                        className="pl-10 h-12 bg-white border-zinc-200 focus-visible:ring-indigo-500 rounded-xl"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                {!isInstructor && instructors.length > 0 && (
+                    <Select value={instructorFilter} onValueChange={setInstructorFilter}>
+                        <SelectTrigger className="w-full md:w-[200px] h-12 rounded-xl border-zinc-200">
+                            <Filter className="h-4 w-4 mr-2" />
+                            <SelectValue placeholder="All Instructors" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Instructors</SelectItem>
+                            {instructors.map(instructor => (
+                                <SelectItem key={instructor.id} value={instructor.id}>
+                                    {instructor.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
             </div>
 
             {/* Student-only sections */}
             {!isInstructor && (
                 <>
-                    {/* Recently Published Courses */}
                     {recentCourses.length > 0 && (
                         <div className="space-y-4">
-                            <div>
+                            <div className="flex items-center justify-between">
                                 <h3 className="text-2xl font-bold tracking-tight">Recently Published</h3>
-                                <p className="text-muted-foreground">Fresh content from our instructors</p>
+                                <Button variant="link" className="text-indigo-600">See all</Button>
                             </div>
                             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                                 {recentCourses.map((course) => (
@@ -210,17 +266,13 @@ export default function CoursesPage() {
                         </div>
                     )}
 
-                    {/* Upcoming Live Classes */}
                     <div className="space-y-4">
-                        <div>
-                            <h3 className="text-2xl font-bold tracking-tight">Upcoming Live Classes</h3>
-                            <p className="text-muted-foreground">Join real-time sessions with industry experts</p>
-                        </div>
+                        <h3 className="text-2xl font-bold tracking-tight">Upcoming Live Classes</h3>
                         {liveCourses.length === 0 ? (
-                            <Card className="border-dashed">
+                            <Card className="border-dashed border-2 bg-zinc-50/50">
                                 <CardContent className="flex flex-col items-center justify-center py-12">
-                                    <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-                                    <p className="text-muted-foreground text-center">
+                                    <Clock className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                                    <p className="text-muted-foreground text-center font-medium">
                                         No upcoming live classes at the moment.<br />
                                         Check back soon for new sessions!
                                     </p>
@@ -229,27 +281,27 @@ export default function CoursesPage() {
                         ) : (
                             <div className="grid gap-4 md:grid-cols-2">
                                 {liveCourses.map((course) => (
-                                    <Card key={course.id} className="hover:shadow-lg transition-shadow">
+                                    <Card key={course.id} className="hover:shadow-lg transition-all border-none bg-white shadow-sm ring-1 ring-zinc-100 overflow-hidden group">
                                         <CardContent className="flex gap-4 p-4">
-                                            <div className="w-16 h-16 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                                                <Clock className="h-8 w-8 text-blue-500" />
+                                            <div className="w-20 h-20 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-100 transition-colors">
+                                                <Clock className="h-10 w-10 text-indigo-500" />
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold truncate">{course.title}</h4>
-                                                <p className="text-sm text-muted-foreground">
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <h4 className="font-bold text-lg truncate text-zinc-900">{course.title}</h4>
+                                                <p className="text-sm text-muted-foreground font-medium">
                                                     with {course.instructor?.name || 'Instructor'}
                                                 </p>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
+                                                <div className="flex items-center gap-3 mt-2">
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100 font-bold uppercase tracking-wider">
                                                         Live
                                                     </span>
-                                                    <span className="text-xs font-semibold">
+                                                    <span className="text-sm font-bold text-zinc-900">
                                                         ₹{(course.discountedPrice || course.price).toLocaleString()}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <Button size="sm" variant="outline" className="self-center">
-                                                View
+                                            <Button size="sm" variant="outline" className="self-center rounded-lg border-zinc-200 font-bold px-4 hover:bg-zinc-50">
+                                                Join
                                             </Button>
                                         </CardContent>
                                     </Card>
@@ -260,53 +312,59 @@ export default function CoursesPage() {
                 </>
             )}
 
-            {/* All Courses Section */}
-            <div className="space-y-4">
-                <div>
-                    <h3 className="text-2xl font-bold tracking-tight">
-                        {isInstructor ? "Competitor Analysis" : "All Courses"}
-                    </h3>
-                    <p className="text-muted-foreground">
-                        {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} available
-                    </p>
+            {/* Catalog Section */}
+            <div className="space-y-6 pt-4 border-t border-zinc-100">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-2xl font-bold tracking-tight text-zinc-900">
+                            {isInstructor ? "Competitor Analysis" : "Explore Library"}
+                        </h3>
+                        <p className="text-muted-foreground font-medium">
+                            {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} available
+                        </p>
+                    </div>
                 </div>
+
+                {loading ? (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="h-[320px] rounded-2xl bg-zinc-100 animate-pulse" />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                        {filteredCourses.length > 0 ? (
+                            filteredCourses.map((course) => (
+                                <CourseCard key={course.id} course={course} />
+                            ))
+                        ) : (
+                            <div className="col-span-full text-center py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200">
+                                <div className="inline-flex p-4 bg-zinc-100 rounded-full mb-4">
+                                    <Search className="h-8 w-8 text-zinc-400" />
+                                </div>
+                                <p className="text-zinc-500 font-bold text-xl mb-1">No courses found</p>
+                                <p className="text-zinc-400">Try adjusting your filters or search keywords.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Course Grid (Catalog) */}
-
-            {loading ? (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-[300px] rounded-lg bg-muted/50 animate-pulse" />
-                    ))}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {filteredCourses.length > 0 ? (
-                        filteredCourses.map((course) => (
-                            <CourseCard key={course.id} course={course} />
-                        ))
-                    ) : (
-                        <div className="col-span-full text-center py-12 text-muted-foreground">
-                            {searchQuery || instructorFilter !== "all"
-                                ? "No courses found matching your filters."
-                                : "No courses available yet."}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Newsletter / Waitlist - Student Only */}
+            {/* Newsletter - Student Only */}
             {!isInstructor && (
-                <div className="mt-8 rounded-xl bg-gradient-to-br from-indigo-900/50 to-purple-900/50 p-6 md:p-8 text-center relative overflow-hidden border border-white/10">
-                    <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10" />
-                    <h2 className="text-xl md:text-2xl font-bold text-white mb-3">Stay Ahead of the Curve</h2>
-                    <p className="text-indigo-200 max-w-xl mx-auto mb-6 text-sm">
-                        Get weekly updates on new courses, live class schedules, and exclusive learning resources delivered to your inbox.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-                        <Input placeholder="Enter your email" className="bg-white/5 border-white/10 text-white placeholder:text-white/40" />
-                        <Button className="bg-white text-indigo-950 hover:bg-white/90 font-bold">Join Waitlist</Button>
+                <div className="mt-12 rounded-[2rem] bg-indigo-950 p-8 md:p-12 text-center relative overflow-hidden shadow-2xl">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                        <div className="absolute top-[-20%] left-[-10%] w-64 h-64 bg-indigo-400 rounded-full blur-[100px]" />
+                        <div className="absolute bottom-[-20%] right-[-10%] w-64 h-64 bg-purple-400 rounded-full blur-[100px]" />
+                    </div>
+                    <div className="relative z-10 max-w-2xl mx-auto">
+                        <h2 className="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight">Stay Ahead of the Curve</h2>
+                        <p className="text-indigo-200/80 max-w-xl mx-auto mb-10 text-lg font-medium">
+                            Get weekly updates on new courses, live class schedules, and exclusive learning resources delivered to your inbox.
+                        </p>
+                        <div className="flex justify-center scale-110 md:scale-125 origin-center">
+                            <WaitlistForm />
+                        </div>
                     </div>
                 </div>
             )}

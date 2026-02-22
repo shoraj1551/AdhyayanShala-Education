@@ -47,11 +47,11 @@ export default function Dashboard() {
     const normalizedRole = user.role?.toLowerCase();
 
     if (normalizedRole === 'admin') {
-        return <AdminDashboard user={user} />;
+        return <AdminDashboard />;
     }
 
     if (normalizedRole === 'instructor') {
-        return <InstructorDashboard user={user} />;
+        return <InstructorDashboard user={user as any} />;
     }
 
     // Default to Student

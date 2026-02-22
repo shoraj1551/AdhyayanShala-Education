@@ -1,6 +1,7 @@
 
 import prisma from '../lib/prisma';
 import { generateICS } from '../utils/icsGenerator';
+import { NotFoundError } from '../lib/errors';
 
 export const getSettings = async (courseId: string) => {
     return await prisma.liveClassSettings.findUnique({
@@ -57,7 +58,7 @@ export const getCourseCalendar = async (courseId: string) => {
         include: { schedules: true }
     });
 
-    if (!course) throw new Error("Course not found");
+    if (!course) throw new NotFoundError("Course");
 
     return generateICS(course.title, course.schedules);
 };

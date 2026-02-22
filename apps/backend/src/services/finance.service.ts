@@ -1,4 +1,12 @@
 import prisma from '../lib/prisma';
+import { Prisma } from '@prisma/client';
+
+interface BankDetailsDTO {
+    type: 'UPI' | 'BANK';
+    value: string;
+    accountName?: string;
+    ifsc?: string;
+}
 
 export const getInstructorFinance = async (instructorId: string) => {
     const user = await prisma.user.findUnique({
@@ -21,16 +29,66 @@ export const getInstructorFinance = async (instructorId: string) => {
         orderBy: { requestedAt: 'desc' }
     });
 
+    // Auto-healing: Credit missing earnings for successful enrollments
+    console.log(`[Finance] Starting auto-heal check for Instructor: ${instructorId}`);
+    const enrollments = await prisma.enrollment.findMany({
+        where: { course: { instructorId } },
+        include: { course: true }
+    });
+    console.log(`[Finance] Found ${enrollments.length} enrollments`);
+
+    const existingEarnings = await prisma.earningsLedger.findMany({
+        where: { instructorId, type: 'COURSE_SALE' },
+        select: { courseId: true }
+    });
+    console.log(`[Finance] Found ${existingEarnings.length} existing earnings records`);
+
+    // Map counts per course
+    const earningsCounts: Record<string, number> = {};
+    for (const e of existingEarnings) {
+        if (e.courseId) earningsCounts[e.courseId] = (earningsCounts[e.courseId] || 0) + 1;
+    }
+
+    const enrollmentCounts: Record<string, number> = {};
+    for (const en of enrollments) {
+        enrollmentCounts[en.courseId] = (enrollmentCounts[en.courseId] || 0) + 1;
+    }
+
+    // Identify and fix missing earnings
+    let creditCount = 0;
+    for (const courseId in enrollmentCounts) {
+        const missing = enrollmentCounts[courseId] - (earningsCounts[courseId] || 0);
+        console.log(`[Finance] Course ${courseId}: ${enrollmentCounts[courseId]} enrolls, ${earningsCounts[courseId] || 0} earnings. Missing: ${missing}`);
+        if (missing > 0) {
+            const course = enrollments.find(e => e.courseId === courseId)?.course;
+            if (course && (course.price > 0 || (course.discountedPrice || 0) > 0)) {
+                const amount = course.discountedPrice || course.price;
+                console.log(`[Finance] Crediting ${missing} sales for course "${course.title}" at amount ₹${amount}`);
+                for (let i = 0; i < missing; i++) {
+                    await recordCourseSale(instructorId, courseId, amount);
+                    creditCount++;
+                }
+            }
+        }
+    }
+    console.log(`[Finance] Auto-heal complete. Credited ${creditCount} records.`);
+
     const earnings = await prisma.earningsLedger.findMany({
         where: { instructorId },
         orderBy: { createdAt: 'desc' },
         take: 50 // Recent history
     });
 
-    return { ...user, payouts, earnings };
+    // Re-fetch user to get updated balances
+    const updatedUser = await prisma.user.findUnique({
+        where: { id: instructorId },
+        select: { walletBalance: true, totalEarnings: true, bankDetails: true }
+    });
+
+    return { ...(updatedUser || user), payouts, earnings };
 };
 
-export const updateBankDetails = async (instructorId: string, details: any) => {
+export const updateBankDetails = async (instructorId: string, details: BankDetailsDTO) => {
     return prisma.user.update({
         where: { id: instructorId },
         data: { bankDetails: JSON.stringify(details) }
@@ -85,7 +143,7 @@ export const requestPayout = async (instructorId: string) => {
 };
 
 export const getAdminPayouts = async (status?: string) => {
-    const where: any = {};
+    const where: Prisma.PayoutWhereInput = {};
     if (status) where.status = status;
 
     return prisma.payout.findMany({

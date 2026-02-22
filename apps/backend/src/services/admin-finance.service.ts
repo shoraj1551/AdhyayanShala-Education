@@ -1,8 +1,9 @@
 import prisma from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export const getTransactions = async (page: number = 1, limit: number = 20, search?: string) => {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.PaymentWhereInput = {};
 
     if (search) {
         where.OR = [

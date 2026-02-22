@@ -2,11 +2,25 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BookOpen, Target, Lightbulb, Users, ArrowLeft } from "lucide-react";
+import { BookOpen, Target, Lightbulb, Users, ArrowLeft, Twitter, Linkedin, Globe } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { getTeam } from "@/lib/api";
 
 export default function AboutPage() {
+    const [team, setTeam] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        getTeam()
+            .then(data => {
+                if (Array.isArray(data)) setTeam(data);
+            })
+            .catch(err => console.error("Failed to fetch team", err))
+            .finally(() => setLoading(false));
+    }, []);
+
     return (
         <div className="min-h-screen bg-background py-12 px-4">
             <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -94,27 +108,49 @@ export default function AboutPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-col md:flex-row items-start gap-6">
-                            <Avatar className="h-24 w-24">
-                                <AvatarImage src="https://github.com/shadcn.png" />
-                                <AvatarFallback className="bg-primary/10 text-primary text-2xl">ST</AvatarFallback>
-                            </Avatar>
-                            <div className="space-y-3 flex-1">
-                                <div>
-                                    <h3 className="text-xl font-semibold">Shoraj Tomer</h3>
-                                    <p className="text-sm text-muted-foreground">Founder & Lead Instructor</p>
-                                </div>
-                                <p className="text-muted-foreground leading-relaxed">
-                                    With years of experience in education and technology, Shoraj is passionate about creating
-                                    learning experiences that are both rigorous and accessible. His teaching philosophy centers
-                                    on practical application, continuous improvement, and fostering a growth mindset.
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">Statistics</span>
-                                    <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">Data Science</span>
-                                    <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">Web Development</span>
-                                </div>
-                            </div>
+                        <div className="space-y-8">
+                            {loading ? (
+                                <div className="text-center text-muted-foreground">Loading team...</div>
+                            ) : team.length > 0 ? (
+                                team.map((member) => (
+                                    <div key={member.id} className="flex flex-col md:flex-row items-start gap-6 border-b last:border-0 pb-6 last:pb-0">
+                                        <Avatar className="h-24 w-24">
+                                            <AvatarImage src={member.imageUrl} />
+                                            <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                                                {member.name.split(' ').map((n: string) => n[0]).join('')}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="space-y-3 flex-1">
+                                            <div>
+                                                <h3 className="text-xl font-semibold">{member.name}</h3>
+                                                <p className="text-sm text-muted-foreground">{member.role}</p>
+                                            </div>
+                                            <p className="text-muted-foreground leading-relaxed">
+                                                {member.bio}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {member.twitter && (
+                                                    <a href={member.twitter} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary text-sm rounded-full hover:bg-primary/20 transition-colors">
+                                                        <Twitter className="h-3 w-3" /> Twitter
+                                                    </a>
+                                                )}
+                                                {member.linkedin && (
+                                                    <a href={member.linkedin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary text-sm rounded-full hover:bg-primary/20 transition-colors">
+                                                        <Linkedin className="h-3 w-3" /> LinkedIn
+                                                    </a>
+                                                )}
+                                                {member.website && (
+                                                    <a href={member.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary text-sm rounded-full hover:bg-primary/20 transition-colors">
+                                                        <Globe className="h-3 w-3" /> Website
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-center text-muted-foreground">Team information is currently unavailable.</p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import {
     Card,
     CardContent,
@@ -12,8 +11,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, CheckCircle, RotateCcw } from "lucide-react";
-import { api } from "@/lib/api";
+import { BookOpen, CheckCircle, RotateCcw } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
 import { EnrollmentModal } from "@/components/EnrollmentModal";
@@ -52,7 +50,9 @@ export function CourseCard({ course }: CourseCardProps) {
         setIsEnrolled(course.isEnrolled || false);
     }, [course.isEnrolled]);
 
-    const handleEnrollClick = () => {
+    const handleEnrollClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (!token) {
             router.push('/login');
             return;
@@ -134,11 +134,24 @@ export function CourseCard({ course }: CourseCardProps) {
                                 View Details
                             </Button>
                         </Link>
+                        <div className="flex flex-col">
+                            {course.discountedPrice && course.discountedPrice < course.price && (
+                                <span className="text-xs text-muted-foreground line-through">₹{course.price.toLocaleString()}</span>
+                            )}
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-lg font-bold text-primary">₹{(course.discountedPrice || course.price).toLocaleString()}</span>
+                                {course.discountedPrice && course.discountedPrice < course.price && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
+                                        {Math.round((1 - course.discountedPrice / course.price) * 100)}% OFF
+                                    </span>
+                                )}
+                            </div>
+                        </div>
                         <Button
                             className="flex-1 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all text-white font-semibold"
                             onClick={handleEnrollClick}
                         >
-                            Enroll
+                            Enroll Now
                         </Button>
                     </div>
                 )}

@@ -4,13 +4,21 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowRight, BookOpen, Brain, Trophy, Users, Globe, Zap, CheckCircle2, Twitter, Linkedin, Instagram, Youtube } from "lucide-react";
+import { ArrowRight, Brain, Trophy, Users, Globe, Zap, CheckCircle2 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { getSocials } from "@/lib/api";
 import React, { useRef, useState } from "react";
 import { AuthSelectionModal } from "@/components/auth-selection-modal";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { newsData } from "@/lib/news-data";
 import { NewsTicker } from "@/components/NewsTicker";
+import { WaitlistForm } from "@/components/waitlist-form";
+
+// Helper to render icon dynamically
+const DynamicIcon = ({ name, className }: { name: string, className?: string }) => {
+  const Icon = (LucideIcons as any)[name];
+  return Icon ? <Icon className={className} /> : <LucideIcons.Link className={className} />;
+};
 
 export default function LandingPage() {
   const { user, isLoading, logout } = useAuth();
@@ -18,6 +26,16 @@ export default function LandingPage() {
   const targetRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: targetRef });
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [socials, setSocials] = useState<any[]>([]);
+
+  // Fetch Socials
+  React.useEffect(() => {
+    getSocials()
+      .then(data => {
+        if (Array.isArray(data)) setSocials(data);
+      })
+      .catch(err => console.error("Failed to fetch socials", err));
+  }, []);
 
   // Fetch News
   React.useEffect(() => {
@@ -139,7 +157,7 @@ export default function LandingPage() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="mt-6 max-w-2xl text-lg md:text-xl text-zinc-200 drop-shadow-md font-medium"
           >
-            Unlock your potential with expert-led courses in AI, Engineering, and Design.
+            Unlock your potential with expert-led courses across all disciplines—from academic excellence to professional skills.
             Stay ahead of the curve with our adaptive learning platform.
           </motion.p>
 
@@ -306,6 +324,22 @@ export default function LandingPage() {
 
 
 
+      {/* Waitlist Section */}
+      <section className="py-24 bg-gradient-to-br from-indigo-950 via-purple-950 to-background border-t border-white/10 relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10" />
+        <div className="container px-4 md:px-6 text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl mb-4">
+            Join the Future of Learning
+          </h2>
+          <p className="text-indigo-200 max-w-2xl mx-auto mb-8 text-lg">
+            Sign up for our newsletter to get the latest course updates, early access to live classes, and exclusive community resources.
+          </p>
+          <div className="flex justify-center">
+            <WaitlistForm />
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t py-16 bg-background">
         <div className="container px-4 md:px-6">
@@ -335,18 +369,20 @@ export default function LandingPage() {
             <div>
               <h3 className="font-bold text-lg mb-4">Follow Us</h3>
               <div className="flex gap-4">
-                <a href="https://twitter.com" target="_blank" rel="noreferrer" className="bg-primary/10 p-2 rounded-full text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
-                  <Twitter className="h-5 w-5" />
-                </a>
-                <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="bg-primary/10 p-2 rounded-full text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
-                  <Linkedin className="h-5 w-5" />
-                </a>
-                <a href="https://instagram.com" target="_blank" rel="noreferrer" className="bg-primary/10 p-2 rounded-full text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
-                  <Instagram className="h-5 w-5" />
-                </a>
-                <a href="https://youtube.com" target="_blank" rel="noreferrer" className="bg-primary/10 p-2 rounded-full text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
-                  <Youtube className="h-5 w-5" />
-                </a>
+                {socials.length > 0 ? socials.map((social) => (
+                  <a
+                    key={social.id}
+                    href={social.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-primary/10 p-2 rounded-full text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label={social.platform}
+                  >
+                    <DynamicIcon name={social.icon || 'Link'} className="h-5 w-5" />
+                  </a>
+                )) : (
+                  <p className="text-sm text-muted-foreground">Connect with us on social media</p>
+                )}
               </div>
             </div>
           </div>

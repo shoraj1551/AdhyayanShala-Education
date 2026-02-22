@@ -1,5 +1,56 @@
 import prisma from '../lib/prisma';
-import { Test, Question, Option } from '@prisma/client';
+import { Test, Question, Option, QuestionType, Prisma } from '@prisma/client';
+import { NotFoundError } from '../lib/errors';
+
+interface OptionDTO {
+    text: string;
+    imageUrl?: string;
+    isCorrect: boolean;
+}
+
+interface CreateTestDTO {
+    title: string;
+    courseId: string;
+    moduleId?: string;
+    duration?: number;
+    order?: number;
+    instructions?: string;
+    totalMarks?: number;
+    passMarks?: number;
+    isPublished?: boolean;
+}
+
+interface UpdateTestDTO {
+    title?: string;
+    duration?: number;
+    order?: number;
+    instructions?: string;
+    totalMarks?: number;
+    passMarks?: number;
+    isPublished?: boolean;
+}
+
+interface CreateQuestionDTO {
+    text: string;
+    type?: QuestionType;
+    explanation?: string;
+    imageUrl?: string;
+    points?: number;
+    negativeMarks?: number;
+    order?: number;
+    options: OptionDTO[];
+}
+
+interface UpdateQuestionDTO {
+    text?: string;
+    type?: QuestionType;
+    explanation?: string;
+    imageUrl?: string;
+    points?: number;
+    negativeMarks?: number;
+    order?: number;
+    options?: OptionDTO[];
+}
 
 export const getTestById = async (testId: string) => {
     return await prisma.test.findUnique({
@@ -27,20 +78,20 @@ export const listTests = async () => {
     });
 };
 
-export const createTest = async (data: any) => {
+export const createTest = async (data: CreateTestDTO) => {
     return await prisma.test.create({
         data
     });
 };
 
-export const updateTest = async (testId: string, data: any) => {
+export const updateTest = async (testId: string, data: UpdateTestDTO) => {
     return await prisma.test.update({
         where: { id: testId },
         data
     });
 };
 
-export const createQuestion = async (testId: string, data: any) => {
+export const createQuestion = async (testId: string, data: CreateQuestionDTO) => {
     // Expects data to include options
     const { options, ...questionData } = data;
     return await prisma.question.create({
@@ -55,7 +106,7 @@ export const createQuestion = async (testId: string, data: any) => {
     });
 };
 
-export const updateQuestion = async (questionId: string, data: any) => {
+export const updateQuestion = async (questionId: string, data: UpdateQuestionDTO) => {
     const { options, ...questionData } = data;
 
     // Update basic question info
@@ -71,7 +122,7 @@ export const updateQuestion = async (questionId: string, data: any) => {
     if (options) {
         await prisma.option.deleteMany({ where: { questionId } });
         await prisma.option.createMany({
-            data: options.map((o: any) => ({ ...o, questionId }))
+            data: options.map((o: OptionDTO) => ({ ...o, questionId }))
         });
     }
 
@@ -87,7 +138,32 @@ export const deleteQuestion = async (questionId: string) => {
     });
 };
 
-export const submitTest = async (userId: string, testId: string, answers: { questionId: string, optionId: string }[]) => {
+export const startAttempt = async (userId: string, testId: string) => {
+    // Check if there is an existing in-progress attempt to resume
+    const existing = await prisma.attempt.findFirst({
+        where: { userId, testId, status: "IN_PROGRESS" }
+    });
+    if (existing) return existing;
+
+    return await prisma.attempt.create({
+        data: {
+            userId,
+            testId,
+            score: 0,
+            status: "IN_PROGRESS",
+            responses: {}
+        }
+    });
+};
+
+export const syncAttempt = async (attemptId: string, responses: Prisma.InputJsonValue) => {
+    return await prisma.attempt.update({
+        where: { id: attemptId },
+        data: { responses }
+    });
+};
+
+export const submitTest = async (userId: string, testId: string, attemptId: string, answers: { questionId: string, optionId: string, timeSpent?: number }[]) => {
     const test = await prisma.test.findUnique({
         where: { id: testId },
         include: {
@@ -97,19 +173,37 @@ export const submitTest = async (userId: string, testId: string, answers: { ques
         }
     });
 
-    if (!test) throw new Error("Test not found");
+    if (!test) throw new NotFoundError("Test");
 
     let score = 0;
-    const totalPoints = test.questions.reduce((sum, q) => sum + q.points, 0);
+    const testTotalMarks = test.totalMarks || 0;
+    const testPassMarks = test.passMarks || 0;
+
+    const totalPoints = testTotalMarks > 0 ? testTotalMarks : test.questions.reduce((sum, q) => sum + q.points, 0);
+    const passMarks = testPassMarks || (totalPoints * 0.7);
     const reflections = [];
+    const finalResponses: Record<string, { optionId: string; status: string; timeSpent: number }> = {};
 
     for (const q of test.questions) {
         const userAnswer = answers.find(a => a.questionId === q.id);
         const correctOption = q.options.find(o => o.isCorrect);
 
         const isCorrect = userAnswer?.optionId === correctOption?.id;
-        if (isCorrect) {
-            score += q.points;
+
+        if (userAnswer?.optionId) {
+            if (isCorrect) {
+                score += q.points;
+            } else {
+                score -= (q.negativeMarks || 0); // Apply penalty
+            }
+        }
+
+        if (userAnswer) {
+            finalResponses[q.id] = {
+                optionId: userAnswer.optionId,
+                status: "ANSWERED",
+                timeSpent: userAnswer.timeSpent || 0
+            };
         }
 
         reflections.push({
@@ -120,13 +214,14 @@ export const submitTest = async (userId: string, testId: string, answers: { ques
         });
     }
 
-    const attempt = await prisma.attempt.create({
+    const attempt = await prisma.attempt.update({
+        where: { id: attemptId },
         data: {
-            userId,
-            testId,
             score,
-            passed: score >= (totalPoints * 0.7),
+            passed: score >= passMarks,
             completedAt: new Date(),
+            status: "SUBMITTED",
+            responses: finalResponses
         }
     });
 

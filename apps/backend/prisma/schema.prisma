@@ -67,11 +67,15 @@ model User {
   
   // Finance
   walletBalance    Float    @default(0)
+  mentorshipFee    Float    @default(0) // Default hourly fee for 1-1 mentorship
   totalEarnings    Float    @default(0)
   bankDetails      String?  // JSON: { type: 'UPI'|'BANK', value: ... }
   
   payouts          Payout[]
   earnings         EarningsLedger[]
+  mentorshipSlots  MentorshipSlot[]   @relation("InstructorSlots")
+  mentorshipsGiven MentorshipBooking[] @relation("MentorshipAsInstructor")
+  mentorshipsTaken MentorshipBooking[] @relation("MentorshipAsStudent")
 }
 
 model Payout {
@@ -81,7 +85,7 @@ model Payout {
   transactionRef String? // Bank Ref ID
   
   instructorId  String
-  instructor    User     @relation(fields: [instructorId], references: [id])
+  instructor    User     @relation(fields: [instructorId], references: [id], onDelete: Cascade)
   
   requestedAt   DateTime @default(now())
   processedAt   DateTime?
@@ -94,10 +98,10 @@ model EarningsLedger {
   description   String?
   
   instructorId  String
-  instructor    User     @relation(fields: [instructorId], references: [id])
+  instructor    User     @relation(fields: [instructorId], references: [id], onDelete: Cascade)
   
   courseId      String?
-  course        Course?  @relation(fields: [courseId], references: [id])
+  course        Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   
   createdAt     DateTime @default(now())
 }
@@ -138,13 +142,16 @@ model Course {
   endDate       DateTime? // Course end date (required for LIVE)
   isPublished   Boolean  @default(false)
   publishedAt   DateTime? // When it was first published
+  isFree        Boolean  @default(false) // Whether the course is free
   
-  // New Fields for Live Classes
+  
+  // New Fields for Live Classes & Media
+  thumbnailUrl    String?  // Course Thumbnail Image
+  promoVideoUrl   String?  // Course Promotional Video
+  brochureUrl     String?  // Course Brochure (PDF/Word/PPT)
+  currency        String   @default("INR") // INR, USD, CAD
   maxStudents     Int?     // Max enrollment limit for LIVE courses
   type            String   @default("VIDEO") // VIDEO or LIVE
-  meetingPlatform String?  // ZOOM, MEET
-  meetingLink     String?
-  schedule        String?
 
   liveSettings    LiveClassSettings?
   schedules       ClassSchedule[]
@@ -171,7 +178,8 @@ model LiveClassSettings {
   platform        String  @default("ZOOM")
   meetingLink     String?
   scheduleNote    String? // e.g. "Mon, Wed, Fri at 8 PM IST"
-  difficulty      String? // If different from CourseLevel
+  recordings      Json?   // Arary of { url, title, recordedAt }
+  notes           Json?   // Array of { url, title, savedAt }
 }
 
 model ClassSchedule {
@@ -192,7 +200,7 @@ model Module {
   title     String
   order     Int
   courseId  String
-  course    Course   @relation(fields: [courseId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons   Lesson[]
   tests     Test[]
 }
@@ -203,15 +211,15 @@ model Lesson {
   content   String?  // Text content or video URL (Legacy or generic)
   type      String   // VIDEO, TEXT
   
-  // New Optional Fields
-  videoUrl      String? // For YouTube/Vimeo links
+  videoUrl      String? // For YouTube/Vimeo links or Cloud Uploads
   summary       String? // Text summary of the lesson
   attachmentUrl String? // Link to PDF/Doc
+  resources     Json?   // Array of { title, url } for helpful materials
 
   duration  Int?     // In minutes
   order     Int      @default(0)
   moduleId  String
-  module    Module   @relation(fields: [moduleId], references: [id])
+  module    Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress  LessonProgress[]
   notes     Note[]
   comments  LessonComment[]
@@ -220,9 +228,9 @@ model Lesson {
 model LessonProgress {
   id          String   @id @default(uuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   lessonId    String
-  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   completedAt DateTime @default(now())
 
   @@unique([userId, lessonId])
@@ -231,9 +239,9 @@ model LessonProgress {
 model Enrollment {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId  String
-  course    Course   @relation(fields: [courseId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   enrolledAt DateTime @default(now())
 
   // Notification Preferences
@@ -248,18 +256,26 @@ model Test {
   id        String   @id @default(uuid())
   title     String
   courseId  String
-  course    Course   @relation(fields: [courseId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   
   // Optional: Link to a Module (for ordering within curriculum)
   moduleId  String?
-  module    Module?  @relation(fields: [moduleId], references: [id])
+  module    Module?  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   
   questions Question[]
   attempts  Attempt[]
   duration  Int      @default(60)
   order     Int      @default(0) // Order within the module or course
+  
+  // New Test Framework Fields
+  instructions String? @db.Text
+  totalMarks   Int     @default(0)
+  passMarks    Int?
+  isPublished  Boolean @default(false)
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  availableAt DateTime?
 }
 
 model Question {
@@ -269,9 +285,13 @@ model Question {
   explanation String?      // For "Why did this work?" reflection
   imageUrl    String?      // URL for question image
   testId      String
-  test        Test         @relation(fields: [testId], references: [id])
+  test        Test         @relation(fields: [testId], references: [id], onDelete: Cascade)
   options     Option[]
   points      Int          @default(1)
+  
+  // New Test Framework Fields
+  negativeMarks Float      @default(0) // Penalty for wrong answer
+  order         Int        @default(0)
 }
 
 model Option {
@@ -280,19 +300,24 @@ model Option {
   imageUrl   String?  // URL for option image
   isCorrect  Boolean
   questionId String
-  question   Question @relation(fields: [questionId], references: [id])
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
 
 model Attempt {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   testId    String
-  test      Test     @relation(fields: [testId], references: [id])
+  test      Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
   score     Int
   passed    Boolean  @default(false)
   startedAt DateTime @default(now())
   completedAt DateTime?
+  
+  // New Test Framework Fields
+  responses Json?    // Stores object mapping questionId -> { optionId, status: "ANSWERED" | "REVIEW", timeSpent }
+  status    String   @default("IN_PROGRESS") // "IN_PROGRESS", "SUBMITTED"
+  updatedAt DateTime @updatedAt
 }
 
 model Announcement {
@@ -306,7 +331,7 @@ model Announcement {
 model Notification {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String?
   message   String
   isRead    Boolean  @default(false)
@@ -318,9 +343,9 @@ model Review {
   rating    Int      @default(5)
   comment   String?
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId  String
-  course    Course   @relation(fields: [courseId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -330,10 +355,10 @@ model LessonComment {
   content   String
   
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   lessonId  String
-  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   
   parentId  String?  // For nested replies
   parent    LessonComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
@@ -356,11 +381,117 @@ model Payment {
   signature         String?
 
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   courseId  String
-  course    Course   @relation(fields: [courseId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model TeamMember {
+  id          String   @id @default(uuid())
+  name        String
+  role        String
+  bio         String
+  imageUrl    String
+  // Social Links for the team member (optional)
+  twitter     String?
+  linkedin    String?
+  website     String?
+  email       String? // Contact email for the team member
+  phone       String? // Contact phone for the team member
+  
+  order       Int      @default(0) // Control display order
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SocialHandle {
+  id          String   @id @default(uuid())
+  platform    String   // Twitter, LinkedIn, Instagram, Youtube, etc.
+  url         String
+  icon        String?  // Name of the icon component to use
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ContactInfo {
+  id          String   @id @default(uuid())
+  category    String   // EMAIL, PHONE, OFFICE
+  label       String   // e.g. General Inquiries, Student Support
+  value       String   // e.g. info@..., +91...
+  description String?  // Optional text
+  
+  isPrimary   Boolean  @default(false)
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ContactInquiry {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  status    String   @default("NEW") // NEW, READ, REPLIED, ARCHIVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MentorshipSlot {
+  id           String   @id @default(uuid())
+  instructorId String
+  instructor   User     @relation("InstructorSlots", fields: [instructorId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek    Int      // 0=Sun, 1=Mon...
+  startTime    String   // "09:00"
+  endTime      String   // "11:00"
+  
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model MentorshipBooking {
+  id           String   @id @default(uuid())
+  studentId    String
+  student      User     @relation("MentorshipAsStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  
+  instructorId String
+  instructor   User     @relation("MentorshipAsInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  
+  date         DateTime // Date of the session
+  startTime    String   // "09:00"
+  duration     Int      @default(60) // in minutes
+  
+  status       String   @default("CONFIRMED") // CONFIRMED, CANCELLED, COMPLETED
+  meetingLink  String?  // Random jitsi link or customized link
+  
+  // Student Context
+  context      String?  @db.Text
+  questions    String?  @db.Text
+  
+  // Billing
+  amountPaid   Float    @default(0)
+  isFree       Boolean  @default(false)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

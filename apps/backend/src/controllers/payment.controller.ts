@@ -1,17 +1,17 @@
-import { Response } from 'express';
+import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import * as PaymentService from '../services/payment.service';
-import * as CourseService from '../services/course.service';
+import { createOrderSchema, verifyPaymentSchema } from '../validations/payment.schema';
 
 import { config } from '../config/env.config';
 import Logger from '../lib/logger';
 
-export const createOrder = async (req: AuthRequest, res: Response) => {
+export const createOrder = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-        const { courseId, plan } = req.body;
+        const { courseId, plan } = createOrderSchema.parse(req.body);
 
         const amount = await PaymentService.calculateOrderAmount(courseId, plan);
         const order = await PaymentService.createOrder(courseId, plan, amount);
@@ -21,36 +21,27 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
             key: config.RAZORPAY_KEY_ID || ''
         });
     } catch (error: any) {
-        Logger.error("Create Order Error:", error);
-        res.status(500).json({ message: error.message || 'Error creating order' });
+        next(error);
     }
 };
 
-export const verifyPayment = async (req: AuthRequest, res: Response) => {
+export const verifyPayment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-        const {
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
-            courseId,
-            billingDetails
-        } = req.body;
+        const validatedData = verifyPaymentSchema.parse(req.body);
 
         const result = await PaymentService.verifyPayment(
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
+            validatedData.razorpay_order_id,
+            validatedData.razorpay_payment_id,
+            validatedData.razorpay_signature,
             userId,
-            courseId,
-            billingDetails
+            validatedData.courseId
         );
 
         res.json(result);
     } catch (error: any) {
-        Logger.error("Verify Payment Error:", error);
-        res.status(400).json({ message: error.message || 'Payment verification failed' });
+        next(error);
     }
 };

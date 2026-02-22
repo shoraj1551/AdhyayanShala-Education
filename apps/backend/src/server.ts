@@ -15,6 +15,7 @@ import progressRoutes from './routes/progress.routes';
 import testRoutes from './routes/test.routes';
 import historyRoutes from './routes/history.routes';
 import activityRoutes from './routes/activity.routes';
+import mentorshipRoutes from './routes/mentorship.routes';
 
 import reviewRoutes from './routes/review.routes';
 import uploadRoutes from './routes/upload.routes';
@@ -26,6 +27,8 @@ import adminCourseRoutes from './routes/admin-course.routes';
 import adminFinanceRoutes from './routes/admin-finance.routes';
 import adminAnalyticsRoutes from './routes/admin-analytics.routes';
 import financeRoutes from './routes/finance.routes';
+import publicRoutes from './routes/public.routes';
+import adminContentRoutes from './routes/admin-content.routes';
 
 const app: Express = express();
 const port = config.PORT;
@@ -34,20 +37,18 @@ import Logger from './lib/logger';
 import { apiLimiter, authLimiter, paymentLimiter, uploadLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 
-// ... (config and cors imports)
-
 // Middleware
 app.use(express.json());
 
 // CORS Configuration - Environment-based origins
 const allowedOrigins = config.NODE_ENV === 'production'
     ? [config.FRONTEND_URL]
-    : [config.FRONTEND_URL, 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3005'];
+    : [config.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://localhost:3005', 'http://127.0.0.1:3005'];
 
 app.use(cors({
     origin: allowedOrigins,
     credentials: true, // Allow cookies if needed
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(helmet());
@@ -80,6 +81,12 @@ app.get('/', (req: Request, res: Response) => {
     res.send('Shoraj Learning Platform API');
 });
 
+// Public Routes (No Auth Required)
+app.use('/api/public', publicRoutes);
+
+// Admin Content Routes
+app.use('/api/admin/content', adminContentRoutes);
+
 // API Routes
 // Auth routes with strict rate limiting
 app.use('/api/auth', authLimiter, authRoutes);
@@ -94,6 +101,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/upload', uploadLimiter, uploadRoutes);
 app.use('/api', discussionRoutes);
 app.use('/api/finance', financeRoutes);
+app.use('/api/mentorship', mentorshipRoutes);
 
 // Admin Routes
 app.use('/api/admin/users', userManagementRoutes);

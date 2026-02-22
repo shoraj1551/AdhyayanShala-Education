@@ -1,6 +1,13 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as TestService from '../services/test.service';
 import { AuthRequest } from '../middleware/auth.middleware';
+import {
+    testSchema,
+    updateTestSchema,
+    questionSchema,
+    updateQuestionSchema,
+    submissionSchema
+} from '../validations/test.schema';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -54,43 +61,46 @@ export const getTest = async (req: Request, res: Response) => {
     }
 };
 
-export const createTest = async (req: Request, res: Response) => {
+export const createTest = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const test = await TestService.createTest(req.body);
+        const validatedData = testSchema.parse(req.body);
+        const test = await TestService.createTest(validatedData);
         res.status(201).json(test);
     } catch (error) {
-        res.status(500).json({ message: 'Error creating test' });
+        next(error);
     }
 };
 
-export const updateTest = async (req: Request, res: Response) => {
+export const updateTest = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const test = await TestService.updateTest(id, req.body);
+        const validatedData = updateTestSchema.parse(req.body);
+        const test = await TestService.updateTest(id, validatedData);
         res.json(test);
     } catch (error) {
-        res.status(500).json({ message: 'Error updating test' });
+        next(error);
     }
 };
 
-export const addQuestion = async (req: Request, res: Response) => {
+export const addQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const question = await TestService.createQuestion(id, req.body);
+        const validatedData = questionSchema.parse(req.body);
+        const question = await TestService.createQuestion(id, validatedData);
         res.status(201).json(question);
     } catch (error) {
-        res.status(500).json({ message: 'Error adding question' });
+        next(error);
     }
 };
 
-export const updateQuestion = async (req: Request, res: Response) => {
+export const updateQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id, questionId } = req.params; // url /tests/:id/questions/:questionId ?? or just /questions/:id
-        // Route likely /questions/:id
-        const question = await TestService.updateQuestion(questionId, req.body);
+        const { questionId } = req.params;
+        const validatedData = updateQuestionSchema.parse(req.body);
+        const question = await TestService.updateQuestion(questionId, validatedData);
         res.json(question);
     } catch (error) {
-        res.status(500).json({ message: 'Error updating question' });
+        next(error);
     }
 };
 
@@ -107,10 +117,9 @@ export const deleteQuestion = async (req: Request, res: Response) => {
 
 
 
-export const submitTest = async (req: AuthRequest, res: Response) => {
+export const startAttempt = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { answers } = req.body;
         const userId = req.user?.id;
         const userRole = req.user?.role;
 
@@ -128,11 +137,38 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
             }
         }
 
-        const result = await TestService.submitTest(userId, id, answers);
-        res.json(result);
+        const attempt = await TestService.startAttempt(userId, id);
+        res.status(201).json(attempt);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error submitting test' });
+        res.status(500).json({ message: 'Error starting test attempt' });
+    }
+};
+
+export const syncAttempt = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const { attemptId } = req.params;
+        const { responses } = req.body;
+
+        const attempt = await TestService.syncAttempt(attemptId, responses);
+        res.json(attempt);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const submitTest = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id, attemptId } = req.params;
+        const { answers } = submissionSchema.parse(req.body);
+        const userId = req.user?.id;
+
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const result = await TestService.submitTest(userId, id, attemptId, answers);
+        res.json(result);
+    } catch (error) {
+        next(error);
     }
 };
 

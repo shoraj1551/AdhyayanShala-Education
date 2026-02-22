@@ -1,9 +1,10 @@
 import prisma from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import * as CourseService from './course.service';
 
 export const getAllCourses = async (page: number = 1, limit: number = 20, search?: string, status?: string) => {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.CourseWhereInput = {};
 
     if (search) {
         where.OR = [

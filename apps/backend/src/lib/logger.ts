@@ -29,7 +29,13 @@ const format = winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
     winston.format.colorize({ all: true }),
     winston.format.printf(
-        (info) => `${info.timestamp} ${info.level}: ${info.message}`,
+        (info) => {
+            const { timestamp, level, message, stack, ...meta } = info;
+            let log = `${timestamp} ${level}: ${message}`;
+            if (stack) log += `\n${stack}`;
+            if (Object.keys(meta).length > 0) log += `\n${JSON.stringify(meta, null, 2)}`;
+            return log;
+        }
     ),
 );
 

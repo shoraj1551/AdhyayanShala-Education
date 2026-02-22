@@ -9,8 +9,4 @@ router.get('/instructor', authenticateToken, authorizeRole(['INSTRUCTOR', 'ADMIN
 router.put('/instructor/bank', authenticateToken, authorizeRole(['INSTRUCTOR', 'ADMIN']), FinanceController.updateBankDetails);
 router.post('/instructor/payout', authenticateToken, authorizeRole(['INSTRUCTOR', 'ADMIN']), FinanceController.requestPayout);
 
-// Admin Routes
-router.get('/admin/payouts', authenticateToken, authorizeRole(['ADMIN']), FinanceController.getAdminPayouts);
-router.post('/admin/payouts/:id/process', authenticateToken, authorizeRole(['ADMIN']), FinanceController.processPayout);
-
 export default router;

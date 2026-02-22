@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Calendar, Video, Download, Bell, Clock } from "lucide-react";
+import { Calendar, Video, Download, Bell, Clock, FileText, PlayCircle } from "lucide-react";
 import api from "@/lib/api";
-import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 
 interface Schedule {
@@ -15,6 +14,18 @@ interface Schedule {
     dayOfWeek: number;
     startTime: string;
     duration: number;
+}
+
+interface Recording {
+    url: string;
+    title: string;
+    recordedAt: string;
+}
+
+interface Note {
+    url: string;
+    title: string;
+    savedAt: string;
 }
 
 interface LiveSettings {
@@ -27,6 +38,8 @@ export function StudentScheduleView({ courseId, isEnrolled }: { courseId: string
     const { user } = useAuth();
     const [settings, setSettings] = useState<LiveSettings | null>(null);
     const [schedules, setSchedules] = useState<Schedule[]>([]);
+    const [recordings, setRecordings] = useState<Recording[]>([]);
+    const [notes, setNotes] = useState<Note[]>([]);
 
     // Notification Preferences (Mock State - in real app, fetch from Enrollment)
     const [notify15m, setNotify15m] = useState(true);
@@ -34,9 +47,11 @@ export function StudentScheduleView({ courseId, isEnrolled }: { courseId: string
 
     useEffect(() => {
         api.get(`/courses/${courseId}/live`).then(res => {
-            setSettings(res.data.settings);
-            setSchedules(res.data.schedules);
-        });
+            setSettings(res?.data?.settings || null);
+            setSchedules(res?.data?.schedules || []);
+            setRecordings(res?.data?.recordings || []);
+            setNotes(res?.data?.notes || []);
+        }).catch(err => console.error(err));
     }, [courseId]);
 
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -142,6 +157,73 @@ export function StudentScheduleView({ courseId, isEnrolled }: { courseId: string
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Past Recordings & Notes (Only visible if there is content) */}
+            {(recordings.length > 0 || notes.length > 0) && (
+                <div className="grid md:grid-cols-2 gap-6 pt-6 border-t">
+                    {/* Recordings Area */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Video className="h-5 w-5" /> Past Recordings
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {recordings.map((rec, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="h-10 w-10 bg-primary/10 text-primary rounded flex items-center justify-center shrink-0">
+                                                <PlayCircle className="h-5 w-5" />
+                                            </div>
+                                            <div className="truncate">
+                                                <p className="font-medium text-sm truncate">{rec.title}</p>
+                                                <p className="text-xs text-muted-foreground">{new Date(rec.recordedAt).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="sm" asChild>
+                                            <a href={rec.url} target="_blank" rel="noopener noreferrer">Watch</a>
+                                        </Button>
+                                    </div>
+                                ))}
+                                {recordings.length === 0 && <p className="text-sm text-muted-foreground">No recordings available yet.</p>}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Downloadable Notes Area */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText className="h-5 w-5" /> Whiteboard Notes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {notes.map((note, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="h-10 w-10 bg-primary/10 text-primary rounded flex items-center justify-center shrink-0">
+                                                <FileText className="h-5 w-5" />
+                                            </div>
+                                            <div className="truncate">
+                                                <p className="font-medium text-sm truncate">{note.title}</p>
+                                                <p className="text-xs text-muted-foreground">{new Date(note.savedAt).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="sm" asChild>
+                                            <a href={note.url} download target="_blank" rel="noopener noreferrer">
+                                                <Download className="h-4 w-4" />
+                                            </a>
+                                        </Button>
+                                    </div>
+                                ))}
+                                {notes.length === 0 && <p className="text-sm text-muted-foreground">No notes available yet.</p>}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

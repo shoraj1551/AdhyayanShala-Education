@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, AlertCircle, GraduationCap, LayoutDashboard, ShieldCheck, UserPlus, Briefcase, Linkedin, Eye, EyeOff } from "lucide-react";
+import { Loader2, AlertCircle, GraduationCap, LayoutDashboard, ShieldCheck, UserPlus, Linkedin, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -27,24 +26,26 @@ function RegisterForm() {
     const isAdmin = role === "admin";
 
     // Dynamic Options State
-    const [studentStatuses, setStudentStatuses] = useState(DEFAULT_STUDENT_STATUSES);
-    const [interestOptions, setInterestOptions] = useState(DEFAULT_INTERESTS);
-    const [expertiseOptions, setExpertiseOptions] = useState(INSTRUCTOR_EXPERTISE_OPTIONS);
+    const [studentStatuses] = useState(DEFAULT_STUDENT_STATUSES);
+    const [interestOptions] = useState(DEFAULT_INTERESTS);
+    const [expertiseOptions] = useState(INSTRUCTOR_EXPERTISE_OPTIONS);
 
+    // Options are loaded from constants.ts
+    // Future: Uncomment to fetch from API if implemented
+    /*
     useEffect(() => {
         const fetchOptions = async () => {
             try {
-                // Expanded API to fetch instructor options if needed
                 const res = await api.get('/auth/registration-options');
                 if (res.statuses) setStudentStatuses(res.statuses);
                 if (res.interests) setInterestOptions(res.interests);
-                // if (res.expertise) setExpertiseOptions(res.expertise);
             } catch (error) {
                 // defaults
             }
         };
         fetchOptions();
     }, []);
+    */
 
     const [formData, setFormData] = useState({
         name: "",
@@ -66,7 +67,6 @@ function RegisterForm() {
 
     const [error, setError] = useState<React.ReactNode>("");
     const [isLoading, setIsLoading] = useState(false);
-    const { login } = useAuth();
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -87,24 +87,31 @@ function RegisterForm() {
                 ...formData,
                 role: role.toUpperCase()
             };
-            const res = await api.post("/auth/register", payload);
+            await api.post("/auth/register", payload);
             // login(res.token, res.user); // Removed auto-login
             toast.success("Account created successfully!", {
                 description: "Be ready with your credentials. Redirecting to login..."
             });
+            const redirect = searchParams.get("redirect");
+            const enroll = searchParams.get("enroll");
+            const loginQuery = new URLSearchParams({ role });
+            if (redirect) loginQuery.set("redirect", redirect);
+            if (enroll) loginQuery.set("enroll", enroll);
+
             setTimeout(() => {
-                router.push(`/login?role=${role}`);
+                router.push(`/login?${loginQuery.toString()}`);
             }, 1500);
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errorData = (err as { data?: { errors?: Array<{ path?: string[], message: string }>, message?: string } }).data;
             console.error("Registration error full object:", err);
             // ... existing logging ...
-            console.error("Registration error data:", err.data);
+            console.error("Registration error data:", errorData);
 
-            if (err.data?.errors && Array.isArray(err.data.errors)) {
+            if (errorData?.errors && Array.isArray(errorData.errors)) {
                 // Zod errors
                 const errorList = (
                     <ul className="list-disc pl-4 space-y-1 text-left">
-                        {err.data.errors.map((e: any, i: number) => (
+                        {errorData.errors.map((e, i) => (
                             <li key={i}>
                                 {e.path ? <span className="font-semibold capitalize">{e.path.join('.')}: </span> : null}
                                 {e.message}
@@ -113,12 +120,12 @@ function RegisterForm() {
                     </ul>
                 );
                 setError(errorList);
-            } else if (err.data?.message) {
+            } else if (errorData?.message) {
                 // Explicit message from backend data
-                setError(err.data.message);
+                setError(errorData.message);
             } else {
                 // Fallback to error object message
-                setError(err.message || "Registration failed");
+                setError((err as Error).message || "Registration failed");
             }
         } finally {
             setIsLoading(false);
@@ -406,7 +413,10 @@ function RegisterForm() {
                 </div>
                 <div className="text-sm text-center text-muted-foreground">
                     Already have an account?{" "}
-                    <Link href={`/login?role=${role}`} className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors">
+                    <Link
+                        href={`/login?role=${role}${searchParams.get('redirect') ? `&redirect=${searchParams.get('redirect')}` : ''}${searchParams.get('enroll') ? `&enroll=${searchParams.get('enroll')}` : ''}`}
+                        className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
+                    >
                         Sign in
                     </Link>
                 </div>

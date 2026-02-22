@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import * as AuthService from '../services/auth.service';
+import { AuthRequest } from '../middleware/auth.middleware';
 import { config } from '../config/env.config';
 import Logger from '../lib/logger';
 
@@ -22,6 +23,7 @@ const registerSchema = z.object({
 const loginSchema = z.object({
     email: z.string().email(),
     password: z.string(),
+    role: z.string().optional(), // Added role
 });
 
 export const register = async (req: Request, res: Response) => {
@@ -57,16 +59,35 @@ export const login = async (req: Request, res: Response) => {
 
         Logger.info(`[LOGIN] User found: ${user.email}, Role: ${user.role}`);
 
-        // ...
+        // Enforce Role Matching
+        // If the user is trying to login as a specific role, ensure they have that role.
+        // Exception: Admins can potentially login as anyone? No, let's be strict.
+        // If I am an ADMIN, I should use the ADMIN login (which might be the same UI but different tab/link? 
+        // actually looking at frontend, it sends 'admin', 'instructor', 'student').
+
+        // Frontend sends role in lowercase, database has uppercase.
+        const requestedRole = validatedData.role ? validatedData.role.toUpperCase() : null;
+        if (requestedRole && requestedRole !== user.role) {
+            Logger.warn(`[LOGIN] Role mismatch. User ${user.email} has role ${user.role} but tried to login as ${requestedRole}`);
+            return res.status(403).json({
+                message: `Access denied. You are a ${user.role}, but tried to login as ${requestedRole}. Please use the correct login tab.`
+            });
+        }
         // 2FA FOR ADMIN
         if (user.role === 'ADMIN') {
             const otp = await AuthService.generateAdminOTP(user.id, user.email);
 
             if (config.NODE_ENV === 'development') {
                 Logger.info(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}: ${otp}`);
-            } else {
-                Logger.info(`[LOGIN 2FA] OTP generated for ADMIN ${user.email}`);
-                // TODO: Integrate Email Service here
+            }
+
+            // Send OTP via Email Service
+            try {
+                await AuthService.sendAdminOTP(user.email, otp);
+                Logger.info(`[LOGIN 2FA] OTP email sent to ${user.email}`);
+            } catch (emailError) {
+                Logger.error(`[LOGIN 2FA] Failed to send OTP email: ${emailError}`);
+                // Don't block login flow failures in dev, but in prod this might be critical
             }
 
             return res.json({
@@ -144,7 +165,7 @@ export const guestLogin = async (req: Request, res: Response) => {
 
 
 
-export const getMe = async (req: any, res: Response) => {
+export const getMe = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const user = await AuthService.getUserById(userId);
@@ -155,7 +176,7 @@ export const getMe = async (req: any, res: Response) => {
     }
 };
 
-export const updateProfile = async (req: any, res: Response) => {
+export const updateProfile = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const { name, avatar } = req.body;

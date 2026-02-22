@@ -20,7 +20,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     token: string | null;
-    login: (token: string, user: User) => void;
+    login: (token: string, user: User, redirectPath?: string) => void;
     logout: (shouldRedirect?: boolean) => void;
     updateUser: (user: User) => void;
     isLoading: boolean;
@@ -55,21 +55,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const login = (newToken: string, newUser: User) => {
+    const login = (newToken: string, newUser: User, redirectPath?: string) => {
         setToken(newToken);
         setUser(newUser);
         localStorage.setItem("token", newToken);
-        router.push("/dashboard");
+
+        if (redirectPath) {
+            router.push(redirectPath);
+            return;
+        }
+
+        // Role-based redirect
+        if (newUser.role === 'ADMIN') {
+            router.push("/admin/analytics");
+        } else if (newUser.role === 'INSTRUCTOR') {
+            router.push("/instructor/courses");
+        } else {
+            router.push("/dashboard");
+        }
     };
 
-    const logout = (shouldRedirect: boolean = true) => {
+    const logout = React.useCallback((shouldRedirect: boolean = true) => {
         setToken(null);
         setUser(null);
         localStorage.removeItem("token");
         if (shouldRedirect) {
             router.push("/login");
         }
-    };
+    }, [router]);
 
     const updateUser = (newUser: User) => {
         setUser(newUser);

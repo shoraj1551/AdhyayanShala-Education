@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../middleware/auth.middleware';
+import prisma from '../lib/prisma';
 
-const prisma = new PrismaClient();
-
-export const getInstructorActivity = async (req: any, res: Response) => {
+export const getInstructorActivity = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.id;
 

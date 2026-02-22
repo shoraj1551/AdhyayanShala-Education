@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Command, ShieldCheck, GraduationCap, LayoutDashboard, Send, Eye, EyeOff } from "lucide-react";
+import { Loader2, Command, ShieldCheck, GraduationCap, LayoutDashboard, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner"; // Assuming sonner is set up as per previous context
 
 function LoginForm() {
     const searchParams = useSearchParams();
-    const router = useRouter(); // Import might be needed if not present
     const role = searchParams.get("role");
 
     // Capitalize role for display
@@ -61,7 +60,13 @@ function LoginForm() {
                     // For demo/dev convenience, if the backend sent the OTP in response (it didn't in my code), we could autofill. 
                     // But backend logs it. User can see console or just check the simplified logic.
                 } else {
-                    login(res.token, res.user);
+                    const redirect = searchParams.get("redirect");
+                    const enroll = searchParams.get("enroll");
+                    let finalRedirect = redirect || undefined;
+                    if (finalRedirect && enroll === "true") {
+                        finalRedirect += finalRedirect.includes("?") ? "&enroll=true" : "?enroll=true";
+                    }
+                    login(res.token, res.user, finalRedirect);
                 }
             } else {
                 // Verify OTP Step
@@ -77,17 +82,24 @@ function LoginForm() {
                 };
 
                 const res = await api.post("/auth/login/verify-otp", payload);
-                login(res.token, res.user);
+                const redirect = searchParams.get("redirect");
+                const enroll = searchParams.get("enroll");
+                let finalRedirect = redirect || undefined;
+                if (finalRedirect && enroll === "true") {
+                    finalRedirect += finalRedirect.includes("?") ? "&enroll=true" : "?enroll=true";
+                }
+                login(res.token, res.user, finalRedirect);
             }
 
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errorData = (err as { data?: { errors?: Array<{ message: string }>, message?: string } }).data;
             console.error("Login error:", err);
-            if (err.data?.errors && Array.isArray(err.data.errors)) {
-                setError(err.data.errors.map((e: any) => e.message).join(", "));
-            } else if (err.data?.message) {
-                setError(err.data.message);
+            if (errorData?.errors && Array.isArray(errorData.errors)) {
+                setError(errorData.errors.map((e) => e.message).join(", "));
+            } else if (errorData?.message) {
+                setError(errorData.message);
             } else {
-                setError(err.message || "Invalid credentials");
+                setError((err as Error).message || "Invalid credentials");
             }
         } finally {
             setIsLoading(false);
@@ -136,7 +148,9 @@ function LoginForm() {
                             <div className="space-y-2">
                                 <Label htmlFor="identifier" className="text-zinc-300">Email Address</Label>
                                 <Input
-                                    id="identifier"
+                                    key={`email-${role}`}
+                                    id={`email-${role}`}
+                                    name={`email-${role}`}
                                     placeholder="name@example.com"
                                     type="text"
                                     autoCapitalize="none"
@@ -152,7 +166,9 @@ function LoginForm() {
                                 <Label htmlFor="password" className="text-zinc-300">Password</Label>
                                 <div className="relative">
                                     <Input
-                                        id="password"
+                                        key={`password-${role}`}
+                                        id={`password-${role}`}
+                                        name={`password-${role}`}
                                         placeholder="••••••••"
                                         type={showPassword ? "text" : "password"}
                                         autoCapitalize="none"

@@ -2,12 +2,13 @@
 import { Router } from 'express';
 import * as CourseController from '../controllers/course.controller';
 import * as LiveClassController from '../controllers/liveClass.controller';
-import { authenticateToken, authorizeRole } from '../middleware/auth.middleware';
+import { authenticateToken, authorizeRole, authenticateTokenOptional } from '../middleware/auth.middleware';
 
 const router = Router();
 
 router.post('/', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.createCourse);
 router.get('/instructor/stats', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getInstructorStats);
+router.get('/instructor/dashboard-data', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getInstructorDashboard);
 router.get('/instructor', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getInstructorCourses);
 router.get('/announcements', CourseController.getAnnouncements); // Public News
 
@@ -27,7 +28,7 @@ router.get('/', CourseController.getCourses);
 // Dynamic Routes (ID based)
 router.get('/:id/analytics', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getCourseAnalytics);
 router.get('/:id/students', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.getEnrolledStudents);
-router.get('/:id', CourseController.getCourse);
+router.get('/:id', authenticateTokenOptional, CourseController.getCourse);
 router.post('/:id/enroll', authenticateToken, CourseController.enrollCourse);
 router.post('/:id/publish', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.publishCourse);
 router.post('/:id/unpublish', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), CourseController.unpublishCourse);
@@ -51,6 +52,9 @@ router.post('/:id/live', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR'
 
 router.post('/:id/live/schedule', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), LiveClassController.addSchedule);
 router.delete('/live/schedule/:scheduleId', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), LiveClassController.deleteSchedule);
+router.post('/:id/live/token', authenticateToken, LiveClassController.generateToken);
+router.post('/:id/live/recording', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), LiveClassController.saveRecording);
+router.post('/:id/live/notes', authenticateToken, authorizeRole(['ADMIN', 'INSTRUCTOR']), LiveClassController.saveNotes);
 
 // Calendar
 router.get('/:id/calendar.ics', LiveClassController.downloadCalendar);

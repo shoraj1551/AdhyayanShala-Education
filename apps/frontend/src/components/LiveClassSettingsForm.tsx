@@ -1,4 +1,6 @@
 
+"use client";
+
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import api from "@/lib/api";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { Loader2, Plus, Trash2, Clock, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Schedule {
     id: string;
@@ -23,8 +27,13 @@ interface LiveSettings {
     difficulty: string;
 }
 
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const FULL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
+    const { token } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState<LiveSettings>({
         platform: 'ZOOM',
         meetingLink: '',
@@ -33,66 +42,113 @@ export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
     });
     const [schedules, setSchedules] = useState<Schedule[]>([]);
 
-    // New Schedule State
-    const [newDay, setNewDay] = useState("1");
+    // Visual schedule builder state
+    const [selectedDays, setSelectedDays] = useState<number[]>([]);
     const [newTime, setNewTime] = useState("20:00");
+    const [duration, setDuration] = useState("60");
 
     useEffect(() => {
         fetchSettings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [courseId]);
+
+    // Auto-generate schedule note from added schedules
+    useEffect(() => {
+        if (schedules.length > 0) {
+            const byTime: Record<string, string[]> = {};
+            schedules.forEach(s => {
+                const key = formatTime12h(s.startTime);
+                if (!byTime[key]) byTime[key] = [];
+                byTime[key].push(DAYS[s.dayOfWeek]);
+            });
+            const note = Object.entries(byTime)
+                .map(([time, days]) => `${days.join(", ")} at ${time} IST`)
+                .join(" | ");
+            setSettings(prev => ({ ...prev, scheduleNote: note }));
+        }
+    }, [schedules]);
+
+    const formatTime12h = (time24: string) => {
+        const [h, m] = time24.split(":").map(Number);
+        const period = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+    };
 
     const fetchSettings = async () => {
         try {
-            const res = await api.get(`/courses/${courseId}/live`);
-            // Backend now returns { data: { settings, schedules } }
+            const res = await api.get(`/courses/${courseId}/live`, token || undefined);
             if (res.data?.settings) setSettings(res.data.settings);
             if (res.data?.schedules) setSchedules(res.data.schedules);
         } catch (error) {
-            console.error(error);
+            console.error("Failed to fetch live settings", error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleSaveSettings = async () => {
+        if (!token) return toast.error("Please login first");
+        setSaving(true);
         try {
-            await api.post(`/courses/${courseId}/live`, settings);
-            toast.success("Settings saved");
-        } catch (error) {
+            await api.post(`/courses/${courseId}/live`, settings, token);
+            toast.success("Settings saved!");
+        } catch {
             toast.error("Failed to save settings");
+        } finally {
+            setSaving(false);
         }
     };
 
     const handleAddSchedule = async () => {
+        if (!token) return toast.error("Please login first");
+        if (selectedDays.length === 0) return toast.error("Please select at least one day");
+
         try {
-            const res = await api.post(`/courses/${courseId}/live/schedule`, {
-                dayOfWeek: parseInt(newDay),
-                startTime: newTime,
-                duration: 60
-            });
-            setSchedules([...schedules, res.data]);
-            toast.success("Schedule added");
-        } catch (error) {
-            toast.error("Failed to add schedule");
+            // Add each selected day as a separate schedule entry
+            const added: Schedule[] = [];
+            for (const day of selectedDays) {
+                const res = await api.post(`/courses/${courseId}/live/schedule`, {
+                    dayOfWeek: day,
+                    startTime: newTime,
+                    duration: parseInt(duration)
+                }, token);
+                added.push(res.data ?? res);
+            }
+            setSchedules(prev => [...prev, ...added]);
+            setSelectedDays([]);
+            toast.success(`Schedule added for ${added.length} day(s)`);
+        } catch {
+            toast.error("Failed to add schedule. Make sure the course exists and you are logged in.");
         }
     };
 
     const handleDeleteSchedule = async (id: string) => {
+        if (!token) return toast.error("Please login first");
         try {
-            await api.delete(`/courses/live/schedule/${id}`);
-            setSchedules(schedules.filter(s => s.id !== id));
+            await api.delete(`/courses/live/schedule/${id}`, undefined, token);
+            setSchedules(prev => prev.filter(s => s.id !== id));
             toast.success("Schedule removed");
-        } catch (error) {
+        } catch {
             toast.error("Failed to remove schedule");
         }
     };
 
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // 0-6? Prisma/ISO usually 1-7 or 0-6. Let's assume 0=Sun for now based on JS Date.
+    const toggleDay = (day: number) => {
+        setSelectedDays(prev =>
+            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+        );
+    };
 
-    if (loading) return <Loader2 className="h-8 w-8 animate-spin" />;
+    if (loading) return (
+        <div className="flex justify-center p-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
 
     return (
         <div className="space-y-6">
+            {/* Meeting Settings */}
             <Card>
                 <CardHeader>
                     <CardTitle>Live Class Settings</CardTitle>
@@ -124,63 +180,151 @@ export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Schedule Note</Label>
+                        <Label>Schedule Summary</Label>
                         <Input
                             placeholder="Auto-generated from Class Schedule below"
                             value={settings.scheduleNote || ''}
                             onChange={(e) => setSettings({ ...settings, scheduleNote: e.target.value })}
-                            disabled={schedules.length > 0}
+                            readOnly={schedules.length > 0}
+                            className={schedules.length > 0 ? "bg-muted" : ""}
                         />
                         {schedules.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                                ✨ Auto-generated from your Class Schedule. Clear all schedules to edit manually.
+                            <p className="text-xs text-primary">
+                                ✨ Auto-generated from your weekly schedule. Remove all slots to edit manually.
                             </p>
                         )}
                     </div>
 
-                    <Button onClick={handleSaveSettings}>Save Settings</Button>
+                    <Button onClick={handleSaveSettings} disabled={saving}>
+                        {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Settings"}
+                    </Button>
                 </CardContent>
             </Card>
 
+            {/* Visual Schedule Builder */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Class Schedule</CardTitle>
-                    <CardDescription>Add recurring weekly slots.</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        Weekly Class Schedule
+                    </CardTitle>
+                    <CardDescription>
+                        Select the days and time for your recurring live sessions.
+                    </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex gap-4 items-end">
-                        <div className="space-y-2 flex-1">
-                            <Label>Day</Label>
-                            <Select value={newDay} onValueChange={setNewDay}>
-                                <SelectTrigger>
+                <CardContent className="space-y-6">
+                    {/* Day toggles */}
+                    <div className="space-y-2">
+                        <Label>Select Days</Label>
+                        <div className="flex gap-2 flex-wrap">
+                            {DAYS.map((day, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => toggleDay(i)}
+                                    className={cn(
+                                        "w-12 h-12 rounded-full text-sm font-semibold border-2 transition-all",
+                                        selectedDays.includes(i)
+                                            ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
+                                            : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                                    )}
+                                    title={FULL_DAYS[i]}
+                                >
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
+                        {selectedDays.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                Selected: {selectedDays.map(d => FULL_DAYS[d]).join(", ")}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Time + Duration */}
+                    <div className="flex gap-4 items-end flex-wrap">
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" /> Class Time
+                            </Label>
+                            <Input
+                                type="time"
+                                value={newTime}
+                                onChange={(e) => setNewTime(e.target.value)}
+                                className="w-36"
+                            />
+                            {newTime && (
+                                <p className="text-xs text-muted-foreground">{formatTime12h(newTime)} IST</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Duration</Label>
+                            <Select value={duration} onValueChange={setDuration}>
+                                <SelectTrigger className="w-40">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {days.map((d, i) => <SelectItem key={i} value={i.toString()}>{d}</SelectItem>)}
+                                    <SelectItem value="30">30 minutes</SelectItem>
+                                    <SelectItem value="45">45 minutes</SelectItem>
+                                    <SelectItem value="60">1 hour</SelectItem>
+                                    <SelectItem value="90">1.5 hours</SelectItem>
+                                    <SelectItem value="120">2 hours</SelectItem>
+                                    <SelectItem value="180">3 hours</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2 flex-1">
-                            <Label>Time (24h)</Label>
-                            <Input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
-                        </div>
-                        <Button onClick={handleAddSchedule} variant="outline"><Plus className="h-4 w-4 mr-2" /> Add</Button>
+
+                        <Button
+                            onClick={handleAddSchedule}
+                            disabled={selectedDays.length === 0}
+                            className="mb-0.5"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add {selectedDays.length > 1 ? `${selectedDays.length} Slots` : "Slot"}
+                        </Button>
                     </div>
 
-                    <div className="space-y-2 mt-4">
-                        {schedules.map(s => (
-                            <div key={s.id} className="flex items-center justify-between p-3 border rounded-md">
-                                <div className="flex items-center gap-4">
-                                    <span className="font-medium w-12">{days[s.dayOfWeek]}</span>
-                                    <span>{s.startTime}</span>
-                                    <span className="text-muted-foreground text-sm">({s.duration} mins)</span>
-                                </div>
-                                <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDeleteSchedule(s.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+                    {/* Current Schedules */}
+                    <div className="space-y-2">
+                        {schedules.length > 0 ? (
+                            <div className="grid gap-2">
+                                {schedules
+                                    .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+                                    .map(s => (
+                                        <div
+                                            key={s.id}
+                                            className="flex items-center justify-between p-3 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <span className="w-10 h-10 rounded-full bg-primary/10 text-primary text-sm font-bold flex items-center justify-center">
+                                                    {DAYS[s.dayOfWeek]}
+                                                </span>
+                                                <div>
+                                                    <p className="font-medium">{FULL_DAYS[s.dayOfWeek]}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {formatTime12h(s.startTime)} IST &bull; {s.duration} mins
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="text-destructive hover:bg-destructive/10"
+                                                onClick={() => handleDeleteSchedule(s.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
                             </div>
-                        ))}
-                        {schedules.length === 0 && <p className="text-sm text-muted-foreground">No recurring schedules added.</p>}
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                                <Calendar className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                                <p className="text-sm">No recurring slots added yet.</p>
+                                <p className="text-xs mt-1">Select days above and click &quot;Add Slot&quot;.</p>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

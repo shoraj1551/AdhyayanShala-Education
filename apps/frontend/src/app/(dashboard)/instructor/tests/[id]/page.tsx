@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Check, Image as ImageIcon, Loader2, Plus, Trash, Save } from "lucide-react";
+import { ArrowLeft, Check, Image as ImageIcon, Loader2, Plus, Trash, ScanText } from "lucide-react";
+import { createWorker } from "tesseract.js";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +29,7 @@ export default function TestEditorPage() {
     const [test, setTest] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [isProcessingOCR, setIsProcessingOCR] = useState(false);
 
     // Question Form State
     const [questions, setQuestions] = useState<any[]>([]);
@@ -36,6 +39,7 @@ export default function TestEditorPage() {
         text: "",
         imageUrl: "",
         points: 1,
+        negativeMarks: 0,
         explanation: "",
         options: [
             { text: "", imageUrl: "", isCorrect: true },
@@ -86,6 +90,59 @@ export default function TestEditorPage() {
         }
     };
 
+    const handleOCR = async (file: File) => {
+        setIsProcessingOCR(true);
+        toast.info("Extracting text. This might take a few seconds...");
+        try {
+            const worker = await createWorker('eng+hin'); // Support English and Hindi
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+
+            if (!text || text.trim().length < 10) {
+                toast.error("Could not extract meaningful text from image.");
+                return;
+            }
+
+            console.log("OCR Extracted Text:", text);
+
+            const lines = text.split('\n').filter(l => l.trim().length > 0);
+            let questionPart = "";
+            const foundOptions: string[] = [];
+            const optionMarkers = [/^\(?[A-D][\)\.]/i, /^\(?[1-4][\)\.]/i, /^[A-D]\s+/, /^[1-4]\s+/];
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                const isOption = optionMarkers.some(regex => regex.test(trimmed));
+                if (isOption) {
+                    const cleaned = trimmed.replace(/^\(?[A-D1-4][\)\.]\s*/i, '').replace(/^[A-D1-4]\s+/, '');
+                    if (cleaned) foundOptions.push(cleaned);
+                } else if (foundOptions.length === 0) {
+                    questionPart += (questionPart ? " " : "") + trimmed;
+                }
+            }
+
+            if (questionPart) {
+                setFormData(prev => ({
+                    ...prev,
+                    text: questionPart,
+                    options: prev.options.map((opt, idx) => ({
+                        ...opt,
+                        text: foundOptions[idx] || opt.text
+                    }))
+                }));
+                toast.success("Text extracted and fields populated!");
+            } else {
+                setFormData(prev => ({ ...prev, text: text }));
+                toast.warning("Extracted text but couldn't identify options automatically.");
+            }
+        } catch (error) {
+            console.error("OCR Error:", error);
+            toast.error("OCR processing failed.");
+        } finally {
+            setIsProcessingOCR(false);
+        }
+    };
+
     const handleSaveQuestion = async () => {
         if (!formData.text && !formData.imageUrl) {
             alert("Question must have text or image");
@@ -109,6 +166,7 @@ export default function TestEditorPage() {
                 text: "",
                 imageUrl: "",
                 points: 1,
+                negativeMarks: 0,
                 explanation: "",
                 options: [
                     { text: "", imageUrl: "", isCorrect: true },
@@ -140,10 +198,11 @@ export default function TestEditorPage() {
             text: q.text || q.content,
             imageUrl: q.imageUrl,
             points: q.points,
+            negativeMarks: q.negativeMarks || 0,
             explanation: q.explanation || "",
-            options: q.options ? q.options.map((o: any) => ({
-                text: o.text || o.content,
-                imageUrl: o.imageUrl,
+            options: q.options ? q.options.map((o: { text?: string; content?: string; imageUrl?: string; isCorrect: boolean }) => ({
+                text: o.text || o.content || "",
+                imageUrl: o.imageUrl || "",
                 isCorrect: o.isCorrect
             })) : []
         });
@@ -172,6 +231,7 @@ export default function TestEditorPage() {
                             text: "",
                             imageUrl: "",
                             points: 1,
+                            negativeMarks: 0,
                             explanation: "",
                             options: [
                                 { text: "", imageUrl: "", isCorrect: true },
@@ -234,6 +294,24 @@ export default function TestEditorPage() {
                                     <Button variant="outline" size="sm" onClick={() => document.getElementById('q-image')?.click()} disabled={uploading}>
                                         <ImageIcon className="h-4 w-4 mr-2" />
                                         {formData.imageUrl ? "Change Image" : "Upload Image"}
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => {
+                                            const input = document.createElement('input');
+                                            input.type = 'file';
+                                            input.accept = 'image/*';
+                                            input.onchange = (e: any) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handleOCR(file);
+                                            };
+                                            input.click();
+                                        }}
+                                        disabled={isProcessingOCR}
+                                    >
+                                        {isProcessingOCR ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ScanText className="h-4 w-4 mr-2" />}
+                                        Scan with OCR
                                     </Button>
                                     {formData.imageUrl && <span className="text-xs text-green-600 flex items-center"><Check className="h-3 w-3 mr-1" /> Image Attached</span>}
                                 </div>

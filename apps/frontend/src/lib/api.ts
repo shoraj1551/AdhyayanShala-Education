@@ -1,10 +1,50 @@
 // API URL Configuration - Fail-fast if missing in production
 const API_URL = process.env.NEXT_PUBLIC_API_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:3001/api' : '');
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:3001/api' : '');
 
 if (!API_URL) {
     throw new Error('NEXT_PUBLIC_API_URL environment variable is required in production');
 }
+
+export interface TeamMemberDTO {
+    name: string;
+    role: string;
+    bio: string;
+    imageUrl: string;
+    twitter?: string;
+    linkedin?: string;
+    website?: string;
+    email?: string;
+    phone?: string;
+    order?: number;
+    isActive?: boolean;
+}
+
+export interface SocialHandleDTO {
+    platform: string;
+    url: string;
+    icon?: string;
+    isActive?: boolean;
+    order?: number;
+}
+
+export interface ContactInfoDTO {
+    category: string;
+    label: string;
+    value: string;
+    description?: string;
+    isPrimary?: boolean;
+    order?: number;
+    isActive?: boolean;
+}
+
+export interface ContactInquiryDTO {
+    name: string;
+    email: string;
+    subject?: string;
+    message: string;
+}
+
 
 
 export const api = {
@@ -15,14 +55,19 @@ export const api = {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-        const res = await fetch(`${API_URL}${url}`, {
-            method: 'GET',
-            headers,
-        });
-        return handleResponse(res);
+        try {
+            const res = await fetch(`${API_URL}${url}`, {
+                method: 'GET',
+                headers,
+            });
+            return handleResponse(res);
+        } catch (error) {
+            console.error(`API GET Error: ${API_URL}${url}`, error);
+            throw error;
+        }
     },
 
-    post: async (url: string, body: any, token?: string) => {
+    post: async (url: string, body: unknown, token?: string) => {
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
         };
@@ -37,7 +82,7 @@ export const api = {
         return handleResponse(res);
     },
 
-    put: async (url: string, body: any, token?: string) => {
+    put: async (url: string, body: unknown, token?: string) => {
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
         };
@@ -52,7 +97,7 @@ export const api = {
         return handleResponse(res);
     },
 
-    patch: async (url: string, body: any, token?: string) => {
+    patch: async (url: string, body: unknown, token?: string) => {
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
         };
@@ -67,7 +112,7 @@ export const api = {
         return handleResponse(res);
     },
 
-    delete: async (url: string, body?: any, token?: string) => {
+    delete: async (url: string, body?: unknown, token?: string) => {
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
         };
@@ -122,7 +167,7 @@ export const api = {
 async function handleResponse(res: Response) {
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        const error = new Error(data.message || 'An error occurred') as any;
+        const error = new Error(data.message || 'An error occurred') as Error & { data?: unknown };
         error.data = data; // Attach full data including validation errors
         throw error;
     }
@@ -130,11 +175,54 @@ async function handleResponse(res: Response) {
 }
 
 // Helper specific to tests
-export const submitTest = async (testId: string, answers: any[], token: string) => {
+export const getInstructorDashboardData = async (token: string) => api.get('/courses/instructor/dashboard-data', token);
+
+export const submitTest = async (testId: string, answers: Record<string, unknown>[], token: string) => {
     return api.post(`/tests/${testId}/submit`, { answers }, token);
 }
 
 export const markLessonComplete = async (lessonId: string, token?: string) => {
     return api.post('/progress/complete', { lessonId }, token);
 }
+export const getTeam = async () => {
+    return api.get('/public/team');
+};
+
+export const getSocials = async () => {
+    return api.get('/public/socials');
+};
+
+export const getContact = async () => {
+    return api.get('/public/contact');
+};
+
+// --- Admin Content API ---
+
+// Team
+export const getAdminTeam = async (token: string) => api.get('/admin/content/team', token);
+export const createAdminTeamMember = async (data: TeamMemberDTO, token: string) => api.post('/admin/content/team', data, token);
+export const updateAdminTeamMember = async (id: string, data: Partial<TeamMemberDTO>, token: string) => api.put(`/admin/content/team/${id}`, data, token);
+export const deleteAdminTeamMember = async (id: string, token: string) => api.delete(`/admin/content/team/${id}`, token);
+
+// Socials
+export const getAdminSocials = async (token: string) => api.get('/admin/content/socials', token);
+export const createAdminSocial = async (data: SocialHandleDTO, token: string) => api.post('/admin/content/socials', data, token);
+export const updateAdminSocial = async (id: string, data: Partial<SocialHandleDTO>, token: string) => api.put(`/admin/content/socials/${id}`, data, token);
+export const deleteAdminSocial = async (id: string, token: string) => api.delete(`/admin/content/socials/${id}`, token);
+
+// Contact
+export const getAdminContacts = async (token: string) => api.get('/admin/content/contact', token);
+export const createAdminContact = async (data: ContactInfoDTO, token: string) => api.post('/admin/content/contact', data, token);
+export const updateAdminContact = async (id: string, data: Partial<ContactInfoDTO>, token: string) => api.put(`/admin/content/contact/${id}`, data, token);
+export const deleteAdminContact = async (id: string, token: string) => api.delete(`/admin/content/contact/${id}`, token);
+
+// Newsletter
+export const joinWaitlist = async (email: string) => api.post('/public/newsletter/subscribe', { email });
+
+// Inquiries
+export const submitContactInquiry = async (data: ContactInquiryDTO) => api.post('/public/contact/inquiry', data);
+export const getAdminInquiries = async (token: string) => api.get('/admin/content/inquiries', token);
+export const updateAdminInquiryStatus = async (id: string, status: string, token: string) => api.patch(`/admin/content/inquiries/${id}`, { status }, token);
+export const deleteAdminInquiry = async (id: string, token: string) => api.delete(`/admin/content/inquiries/${id}`, token);
+
 export default api;

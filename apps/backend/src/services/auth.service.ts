@@ -3,6 +3,13 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env.config';
 import crypto from 'node:crypto';
+import * as EmailService from './email.service';
+import {
+    ConflictError,
+    ValidationError,
+    UnauthorizedError,
+    BadRequestError
+} from '../lib/errors';
 
 import { Role } from '@prisma/client';
 
@@ -30,13 +37,13 @@ export const registerUser = async (data: RegisterUserDTO) => {
     });
 
     if (existingUser) {
-        throw new Error('User already exists');
+        throw new ConflictError('User already exists');
     }
 
     // Password strength validation
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(data.password)) {
-        throw new Error(
+        throw new ValidationError(
             'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
         );
     }
@@ -60,7 +67,7 @@ export const registerUser = async (data: RegisterUserDTO) => {
     });
 
     const token = jwt.sign(
-        { userId: user.id, role: user.role },
+        { id: user.id, role: user.role },
         config.JWT_SECRET,
         { expiresIn: '24h' }
     );
@@ -74,13 +81,13 @@ export const loginUser = async (data: LoginUserDTO) => {
     });
 
     if (!user) {
-        throw new Error('Invalid credentials');
+        throw new UnauthorizedError('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
 
     if (!isPasswordValid) {
-        throw new Error('Invalid credentials');
+        throw new UnauthorizedError('Invalid credentials');
     }
 
     return user;
@@ -102,21 +109,25 @@ export const generateAdminOTP = async (userId: string, email: string) => {
     return otp;
 };
 
+export const sendAdminOTP = async (email: string, otp: string) => {
+    return EmailService.sendAdminOTP(email, otp);
+};
+
 export const verifyAdminOTP = async (userId: string, otp: string) => {
     const user = await prisma.user.findUnique({
         where: { id: userId }
     });
 
     if (!user || !user.loginOtp || !user.loginOtpExpires) {
-        throw new Error('Invalid request or OTP expired');
+        throw new BadRequestError('Invalid request or OTP expired');
     }
 
     if (new Date() > user.loginOtpExpires) {
-        throw new Error('OTP expired');
+        throw new BadRequestError('OTP expired');
     }
 
     if (user.loginOtp !== otp) {
-        throw new Error('Invalid OTP');
+        throw new UnauthorizedError('Invalid OTP');
     }
 
     // Clear OTP
@@ -151,7 +162,7 @@ export const createGuestSession = async () => {
     });
 
     const token = jwt.sign(
-        { userId: user.id, role: user.role },
+        { id: user.id, role: user.role },
         config.JWT_SECRET,
         { expiresIn: '24h' }
     );

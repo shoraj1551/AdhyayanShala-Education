@@ -1,17 +1,30 @@
-
 import prisma from '../lib/prisma';
 import { Prisma, CourseLevel } from '@prisma/client';
+import { randomInt } from 'node:crypto';
 import Logger from '../lib/logger';
+import {
+    NotFoundError,
+    UnauthorizedError,
+    BadRequestError
+} from '../lib/errors';
+import {
+    verifyCourseOwnership,
+    verifyModuleOwnership,
+    verifyLessonOwnership,
+    verifyTestOwnership
+} from '../utils/auth-helpers';
 
 export const listCourses = async (search?: string, excludeInstructorId?: string) => {
     const where: Prisma.CourseWhereInput = {
         isPublished: true,
     };
 
-    where.OR = [
-        { title: { contains: search } },
-        { description: { contains: search } },
-    ];
+    if (search && search.trim() !== '') {
+        where.OR = [
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+        ];
+    }
 
     // Exclude instructor's own courses for market research
     if (excludeInstructorId) {
@@ -26,6 +39,7 @@ export const listCourses = async (search?: string, excludeInstructorId?: string)
             id: true,
             title: true,
             description: true,
+            thumbnailUrl: true,
             level: true,
             price: true,
             discountedPrice: true,
@@ -70,9 +84,10 @@ interface CreateCourseDTO {
     description: string;
     level?: CourseLevel;
     price?: number;
-    type?: 'VIDEO' | 'LIVE' | 'TEXT';
+    type?: 'VIDEO' | 'LIVE' | 'TEXT' | 'TEST_SERIES';
     instructorId: string;
     isPublished?: boolean;
+    isFree?: boolean; // New field
     // Live Course specifics
     pricePerClass?: number;
     discountedPrice?: number;
@@ -81,8 +96,12 @@ interface CreateCourseDTO {
     endDate?: Date | string;
     meetingPlatform?: string;
     meetingLink?: string;
-    schedule?: any; // Keep any for JSON/Complex object if structure is variable, or define strict schedule type if possible. Let's keep strict check but allow flexible schedule for now or defined interface.
+    schedule?: string;
     maxStudents?: number;
+    thumbnailUrl?: string;
+    promoVideoUrl?: string;
+    brochureUrl?: string;
+    currency?: string;
 }
 
 export const createCourse = async (data: CreateCourseDTO) => {
@@ -95,23 +114,39 @@ export const createCourse = async (data: CreateCourseDTO) => {
         price: data.price || 0,
         type: data.type || 'VIDEO',
         isPublished: data.isPublished ?? false,
+        isFree: data.isFree ?? false, // Mapped new field
         instructor: { connect: { id: data.instructorId } },
 
         // Live Course specifics (Defaulting to undefined or null appropriately for optional fields)
         pricePerClass: data.type === 'LIVE' ? data.pricePerClass : undefined,
         discountedPrice: data.type === 'LIVE' ? data.discountedPrice : undefined,
         totalClasses: data.type === 'LIVE' ? data.totalClasses : undefined,
-        startDate: data.type === 'LIVE' && data.startDate ? new Date(data.startDate) : undefined,
+        startDate: (data.type === 'LIVE' || data.type === 'TEST_SERIES') && data.startDate ? new Date(data.startDate) : undefined,
         endDate: data.type === 'LIVE' && data.endDate ? new Date(data.endDate) : undefined,
-        meetingPlatform: data.type === 'LIVE' ? data.meetingPlatform : undefined,
-        meetingLink: data.type === 'LIVE' ? data.meetingLink : undefined,
-        schedule: data.type === 'LIVE' && data.schedule ? data.schedule : undefined,
         maxStudents: data.type === 'LIVE' ? data.maxStudents : undefined,
+        thumbnailUrl: data.thumbnailUrl,
+        promoVideoUrl: data.promoVideoUrl,
+        brochureUrl: data.brochureUrl,
+        currency: data.currency || 'INR',
     };
 
-    return await prisma.course.create({
+    const course = await prisma.course.create({
         data: courseData
     });
+
+    // Handle LIVE course settings
+    if (data.type === 'LIVE') {
+        await prisma.liveClassSettings.create({
+            data: {
+                courseId: course.id,
+                platform: data.meetingPlatform || 'ZOOM',
+                meetingLink: data.meetingLink,
+                scheduleNote: data.schedule,
+            }
+        });
+    }
+
+    return course;
 };
 
 export const listInstructorCourses = async (instructorId: string) => {
@@ -126,6 +161,11 @@ export const listInstructorCourses = async (instructorId: string) => {
 };
 
 export const getInstructorStats = async (instructorId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: instructorId },
+        select: { totalEarnings: true, walletBalance: true }
+    });
+
     const courses = await prisma.course.findMany({
         where: { instructorId },
         include: {
@@ -138,10 +178,7 @@ export const getInstructorStats = async (instructorId: string) => {
     const totalCourses = courses.length;
     const publishedCourses = courses.filter(c => c.isPublished).length;
     const totalEnrollments = courses.reduce((sum, course) => sum + course._count.enrollments, 0);
-    const totalRevenue = courses.reduce((sum, course) => {
-        const courseRevenue = course._count.enrollments * (course.discountedPrice || course.price);
-        return sum + courseRevenue;
-    }, 0);
+    const totalRevenue = user?.totalEarnings || 0;
 
     const coursesWithStats = courses.map(course => ({
         id: course.id,
@@ -161,16 +198,99 @@ export const getInstructorStats = async (instructorId: string) => {
     };
 };
 
-export const getCourseEnrollments = async (courseId: string, instructorId: string) => {
-    // Verify course ownership
-    const course = await prisma.course.findUnique({
-        where: { id: courseId },
-        select: { instructorId: true }
+export const getInstructorDashboardData = async (instructorId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: instructorId },
+        select: { totalEarnings: true, walletBalance: true }
     });
 
-    if (!course || course.instructorId !== instructorId) {
-        throw new Error("Course not found or unauthorized");
-    }
+    // 1. Fetch all courses for the instructor
+    const courses = await prisma.course.findMany({
+        where: { instructorId },
+        include: {
+            liveSettings: true,
+            _count: {
+                select: { enrollments: true }
+            }
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    const totalCourses = courses.length;
+    const publishedCourses = courses.filter(c => c.isPublished).length;
+    const totalEnrollments = courses.reduce((sum, course) => sum + course._count.enrollments, 0);
+    const totalRevenue = user?.totalEarnings || 0;
+    const walletBalance = user?.walletBalance || 0;
+
+    // 2. Format Active Courses (Published)
+    const activeCourses = courses
+        .filter(c => c.isPublished)
+        .map(course => ({
+            id: course.id,
+            title: course.title,
+            thumbnailUrl: course.thumbnailUrl,
+            enrollmentCount: course._count.enrollments,
+            price: course.discountedPrice || course.price,
+            type: course.type,
+            createdAt: course.createdAt,
+        }));
+
+    // 3. Find Upcoming LIVE Classes
+    const upcomingClasses = courses
+        .filter(c => c.type === 'LIVE' && c.isPublished)
+        .map(c => ({
+            id: c.id,
+            title: c.title,
+            thumbnailUrl: c.thumbnailUrl,
+            startDate: c.startDate,
+            schedule: c.liveSettings?.scheduleNote,
+            meetingPlatform: c.liveSettings?.platform,
+            meetingLink: c.liveSettings?.meetingLink,
+        }))
+        .slice(0, 5);
+
+    // 4. Fetch Recent Enrollments across all instructor's courses
+    const courseIds = courses.map(c => c.id);
+    const recentEnrollments = await prisma.enrollment.findMany({
+        where: {
+            courseId: { in: courseIds }
+        },
+        include: {
+            user: { select: { name: true, email: true, avatar: true } },
+            course: { select: { title: true } }
+        },
+        orderBy: { enrolledAt: 'desc' },
+        take: 10
+    });
+
+    const formattedRecentEnrollments = recentEnrollments.map(e => ({
+        id: e.id,
+        user: {
+            name: e.user.name || 'Unknown User',
+            email: e.user.email,
+            avatar: e.user.avatar,
+        },
+        courseTitle: e.course.title,
+        enrolledAt: e.enrolledAt,
+    }));
+
+    return {
+        stats: {
+            totalCourses,
+            publishedCourses,
+            totalEnrollments,
+            totalRevenue,
+            walletBalance
+        },
+        activeCourses,
+        upcomingClasses,
+        recentEnrollments: formattedRecentEnrollments,
+    };
+};
+
+export const getCourseEnrollments = async (courseId: string, instructorId: string) => {
+    // Verify course ownership
+    await verifyCourseOwnership(courseId, instructorId);
 
     // Fetch enrollments
     // Assuming Enrollment has relation to User
@@ -192,10 +312,7 @@ export const getCourseEnrollments = async (courseId: string, instructorId: strin
 
 export const addModule = async (courseId: string, title: string, userId: string) => {
     // Verify Access
-    const course = await prisma.course.findUnique({ where: { id: courseId } });
-    if (!course) throw new Error("Course not found");
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+    await verifyCourseOwnership(courseId, userId);
 
     // Get max order
     const lastModule = await prisma.module.findFirst({
@@ -219,14 +336,11 @@ export const addLesson = async (moduleId: string, data: {
     content: string,
     videoUrl?: string,
     summary?: string,
-    attachmentUrl?: string
+    attachmentUrl?: string,
+    resources?: Prisma.InputJsonValue
 }, userId: string) => {
     // Verify Access via Module -> Course
-    const module = await prisma.module.findUnique({ where: { id: moduleId }, include: { course: true } });
-    if (!module) throw new Error("Module not found");
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+    await verifyModuleOwnership(moduleId, userId);
 
     const lastLesson = await prisma.lesson.findFirst({
         where: { moduleId },
@@ -243,6 +357,7 @@ export const addLesson = async (moduleId: string, data: {
             videoUrl: data.videoUrl,
             summary: data.summary,
             attachmentUrl: data.attachmentUrl,
+            resources: data.resources,
             order
         }
     });
@@ -250,10 +365,7 @@ export const addLesson = async (moduleId: string, data: {
 
 export const deleteModule = async (id: string, userId: string) => {
     // Verify Access
-    const module = await prisma.module.findUnique({ where: { id }, include: { course: true } });
-    if (!module) throw new Error("Module not found");
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+    await verifyModuleOwnership(id, userId);
 
     // Delete lessons manually to be safe
     await prisma.lesson.deleteMany({ where: { moduleId: id } });
@@ -262,20 +374,14 @@ export const deleteModule = async (id: string, userId: string) => {
 
 export const deleteLesson = async (id: string, userId: string) => {
     // Verify Access
-    const lesson = await prisma.lesson.findUnique({ where: { id }, include: { module: { include: { course: true } } } });
-    if (!lesson) throw new Error("Lesson not found");
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (lesson.module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+    await verifyLessonOwnership(id, userId);
 
     return await prisma.lesson.delete({ where: { id } });
 };
 
 export const updateModule = async (id: string, title: string, userId: string) => {
     // Verify Access
-    const module = await prisma.module.findUnique({ where: { id }, include: { course: true } });
-    if (!module) throw new Error("Module not found");
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+    await verifyModuleOwnership(id, userId);
 
     return await prisma.module.update({
         where: { id },
@@ -289,13 +395,11 @@ export const updateLesson = async (id: string, data: {
     type?: string,
     videoUrl?: string,
     summary?: string,
-    attachmentUrl?: string
+    attachmentUrl?: string,
+    resources?: Prisma.InputJsonValue
 }, userId: string) => {
     // Verify Access
-    const lesson = await prisma.lesson.findUnique({ where: { id }, include: { module: { include: { course: true } } } });
-    if (!lesson) throw new Error("Lesson not found");
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (lesson.module.course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
+    await verifyLessonOwnership(id, userId);
 
     return await prisma.lesson.update({
         where: { id },
@@ -309,10 +413,10 @@ export const enrollUserInCourse = async (userId: string, courseId: string) => {
         where: { id: courseId },
         include: { _count: { select: { enrollments: true } } }
     });
-    if (!course) throw new Error("Course not found");
+    if (!course) throw new NotFoundError("Course");
 
     if (course.maxStudents && course._count.enrollments >= course.maxStudents) {
-        throw new Error("Course is full");
+        throw new BadRequestError("Course is full");
     }
 
     // Check existing enrollment
@@ -346,21 +450,21 @@ export const checkGuestEnrollmentLimit = async (userId: string) => {
 // 2FA for Unpublish
 export const unpublishCourseWithOTP = async (courseId: string, userId: string, otp?: string) => {
     const course = await prisma.course.findUnique({ where: { id: courseId }, include: { _count: { select: { enrollments: true } } } });
-    if (!course) throw new Error("Course not found");
+    if (!course) throw new NotFoundError("Course");
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new Error("User not found");
+    if (!user) throw new NotFoundError("User");
 
-    Logger.info(`[Unpublish] CourseId: ${courseId}, UserId: ${userId}, Role: ${user.role}, Enrollments: ${course._count.enrollments}`);
+    Logger.info(`[Unpublish] CourseId: ${courseId}, UserId: ${userId}, Role: ${user.role}, Enrollments: ${course._count.enrollments} `);
 
     if (course.instructorId !== userId && user.role !== 'ADMIN') {
-        throw new Error("Unauthorized");
+        throw new UnauthorizedError();
     }
 
     if (course._count.enrollments > 0 && user.role !== 'ADMIN') {
-        if (!otp) throw new Error("OTP Required to unpublish active course.");
-        if (user.deleteOtp !== otp) throw new Error("Invalid OTP");
-        if (!user.deleteOtpExpires || new Date() > user.deleteOtpExpires) throw new Error("OTP Expired");
+        if (!otp) throw new BadRequestError("OTP Required to unpublish active course.");
+        if (user.deleteOtp !== otp) throw new UnauthorizedError("Invalid OTP");
+        if (!user.deleteOtpExpires || new Date() > user.deleteOtpExpires) throw new BadRequestError("OTP Expired");
     }
 
     if (course._count.enrollments > 0) {
@@ -394,11 +498,7 @@ export const getCourseProgress = async (userId: string, courseId: string) => {
 export const publishCourse = async (courseId: string, userId?: string) => {
     // Check override
     if (userId) {
-        const course = await prisma.course.findUnique({ where: { id: courseId } });
-        if (course) {
-            const user = await prisma.user.findUnique({ where: { id: userId } });
-            if (course.instructorId !== userId && user?.role !== 'ADMIN') throw new Error("Unauthorized");
-        }
+        await verifyCourseOwnership(courseId, userId);
     }
 
     // 1. Update Course
@@ -413,8 +513,8 @@ export const publishCourse = async (courseId: string, userId?: string) => {
     // 2. Create Announcement
     await prisma.announcement.create({
         data: {
-            title: `New Course: ${course.title}`,
-            content: `We are excited to announce a new course "${course.title}". Check it out now!`,
+            title: `New Course: ${course.title} `,
+            content: `We are excited to announce a new course "${course.title}".Check it out now!`,
             type: "COURSE_LAUNCH"
         }
     });
@@ -432,15 +532,6 @@ export const publishCourse = async (courseId: string, userId?: string) => {
     }
 
     return course;
-};
-
-// unpublishCourse replaced by unpublishCourseWithOTP
-export const unpublishCourse = async (courseId: string) => {
-    // Legacy support or internal use
-    return await prisma.course.update({
-        where: { id: courseId },
-        data: { isPublished: false }
-    });
 };
 
 export const listAnnouncements = async () => {
@@ -489,17 +580,10 @@ export const saveNote = async (userId: string, lessonId: string, content: string
 // --- DELETE COURSE WITH OTP LOGIC ---
 
 export const generateDeleteOTP = async (courseId: string, userId: string) => {
-    const course = await prisma.course.findUnique({ where: { id: courseId } });
-    if (!course) throw new Error("Course not found");
+    await verifyCourseOwnership(courseId, userId);
 
-    // Check permissions
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new Error("User not found");
-
-    if (course.instructorId !== userId && user.role !== 'ADMIN') throw new Error("Unauthorized");
-
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate cryptographically secure 6-digit OTP
+    const otp = randomInt(100000, 1000000).toString();
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     // Store in User
@@ -528,97 +612,74 @@ export const deleteCourseWithOTP = async (courseId: string, userId: string, otp?
         }
     });
 
-    if (!course) throw new Error("Course not found");
+    if (!course) throw new NotFoundError("Course");
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new Error("User not found");
-
-    if (course.instructorId !== userId && user.role !== 'ADMIN') throw new Error("Unauthorized");
+    const { user } = await verifyCourseOwnership(courseId, userId);
 
     // 2. Check Enrollments & OTP
     const enrollmentCount = course._count.enrollments;
 
     if (enrollmentCount > 0 && user.role !== 'ADMIN') {
         // Require OTP only if students are enrolled
-        if (!otp) throw new Error("OTP Required for courses with active students.");
+        if (!otp) throw new BadRequestError("OTP Required for courses with active students.");
 
         const userCheck = await prisma.user.findUnique({ where: { id: userId } });
         // user is already fetched above, but keeping logic consistent if needed or reusing 'user' var
 
-        if (user.deleteOtp !== otp) throw new Error("Invalid OTP");
-        if (!user.deleteOtpExpires || new Date() > user.deleteOtpExpires) throw new Error("OTP Expired");
+        if (user.deleteOtp !== otp) throw new UnauthorizedError("Invalid OTP");
+        if (!user.deleteOtpExpires || new Date() > user.deleteOtpExpires) throw new BadRequestError("OTP Expired");
     }
 
-    // 3. Proceed to delete (Granular Cleanup - Batch Optimized)
+    // 3. Proceed to delete (Granular Cleanup - Batch Optimized within Transaction)
+    await prisma.$transaction(async (tx) => {
+        // A. Cleanup Modules, Lessons, Progress, Comments, Notes
+        const modules = await tx.module.findMany({ where: { courseId }, select: { id: true } });
+        const moduleIds = modules.map(m => m.id);
 
-    // A. Cleanup Modules, Lessons, Progress, Comments, Notes
-    const modules = await prisma.module.findMany({ where: { courseId }, select: { id: true } });
-    const moduleIds = modules.map(m => m.id);
+        if (moduleIds.length > 0) {
+            const lessons = await tx.lesson.findMany({ where: { moduleId: { in: moduleIds } }, select: { id: true } });
+            const lessonIds = lessons.map(l => l.id);
 
-    if (moduleIds.length > 0) {
-        const lessons = await prisma.lesson.findMany({ where: { moduleId: { in: moduleIds } }, select: { id: true } });
-        const lessonIds = lessons.map(l => l.id);
-
-        if (lessonIds.length > 0) {
-            // Delete dependencies of Lessons
-            await prisma.lessonProgress.deleteMany({ where: { lessonId: { in: lessonIds } } });
-            await prisma.lessonComment.deleteMany({ where: { lessonId: { in: lessonIds } } });
-
-            // Notes have Cascade usually, but safe to delete explicit if unsure of schema history
-            // Standardizing manual delete to ensure consistency
-            await prisma.note.deleteMany({ where: { lessonId: { in: lessonIds } } });
-
-            // Delete Lessons
-            await prisma.lesson.deleteMany({ where: { moduleId: { in: moduleIds } } });
+            if (lessonIds.length > 0) {
+                await tx.lessonProgress.deleteMany({ where: { lessonId: { in: lessonIds } } });
+                await tx.lessonComment.deleteMany({ where: { lessonId: { in: lessonIds } } });
+                await tx.note.deleteMany({ where: { lessonId: { in: lessonIds } } });
+                await tx.lesson.deleteMany({ where: { moduleId: { in: moduleIds } } });
+            }
+            await tx.module.deleteMany({ where: { courseId } });
         }
-        // Delete Modules
-        await prisma.module.deleteMany({ where: { courseId } });
-    }
 
-    // B. Cleanup Tests (Questions, Options, Attempts)
-    const tests = await prisma.test.findMany({ where: { courseId }, select: { id: true } });
-    const testIds = tests.map(t => t.id);
+        // B. Cleanup Tests (Questions, Options, Attempts)
+        const tests = await tx.test.findMany({ where: { courseId }, select: { id: true } });
+        const testIds = tests.map(t => t.id);
 
-    if (testIds.length > 0) {
-        // Delete Attempts
-        await prisma.attempt.deleteMany({ where: { testId: { in: testIds } } });
+        if (testIds.length > 0) {
+            await tx.attempt.deleteMany({ where: { testId: { in: testIds } } });
+            const questions = await tx.question.findMany({ where: { testId: { in: testIds } }, select: { id: true } });
+            const questionIds = questions.map(q => q.id);
 
-        // Delete Questions & Options
-        const questions = await prisma.question.findMany({ where: { testId: { in: testIds } }, select: { id: true } });
-        const questionIds = questions.map(q => q.id);
-
-        if (questionIds.length > 0) {
-            await prisma.option.deleteMany({ where: { questionId: { in: questionIds } } });
-            await prisma.question.deleteMany({ where: { testId: { in: testIds } } });
+            if (questionIds.length > 0) {
+                await tx.option.deleteMany({ where: { questionId: { in: questionIds } } });
+                await tx.question.deleteMany({ where: { testId: { in: testIds } } });
+            }
+            await tx.test.deleteMany({ where: { courseId } });
         }
-        // Delete Tests
-        await prisma.test.deleteMany({ where: { courseId } });
-    }
 
-    // C. Cleanup Reviews
-    await prisma.review.deleteMany({ where: { courseId } });
+        // C-G. Cleanup other relations
+        await tx.review.deleteMany({ where: { courseId } });
+        await tx.enrollment.deleteMany({ where: { courseId } });
+        await tx.payment.deleteMany({ where: { courseId } });
+        await tx.earningsLedger.deleteMany({ where: { courseId } });
+        await tx.course.delete({ where: { id: courseId } });
 
-    // D. Cleanup Enrollments
-    await prisma.enrollment.deleteMany({ where: { courseId } });
-
-    // E. Cleanup Payments (Required for Hard Delete due to FK)
-    await prisma.payment.deleteMany({ where: { courseId } });
-
-    // F. Cleanup EarningLedgers (If linked)
-    // Checking schema... EarningsLedger has courseId? Yes.
-    await prisma.earningsLedger.deleteMany({ where: { courseId } });
-
-    // G. Delete Course
-    await prisma.course.delete({ where: { id: courseId } });
-
-    // Clear OTP
-    // Clear OTP if it was used
-    if (enrollmentCount > 0) {
-        await prisma.user.update({
-            where: { id: userId },
-            data: { deleteOtp: null, deleteOtpExpires: null }
-        });
-    }
+        // Clear OTP if it was used
+        if (enrollmentCount > 0) {
+            await tx.user.update({
+                where: { id: userId },
+                data: { deleteOtp: null, deleteOtpExpires: null }
+            });
+        }
+    });
 
     return { message: "Course deleted successfully" };
 };

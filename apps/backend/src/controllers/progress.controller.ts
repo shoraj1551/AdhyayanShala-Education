@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../lib/prisma';
 
-// TODO: Replace with real user ID from Auth Middleware
-const DEV_STUDENT_EMAIL = 'student@shorajtomer.me';
 
-export const markLessonComplete = async (req: any, res: Response) => {
+
+export const markLessonComplete = async (req: AuthRequest, res: Response) => {
     try {
         const { lessonId } = req.body;
         const userId = req.user?.id;
@@ -41,7 +41,7 @@ export const markLessonComplete = async (req: any, res: Response) => {
     }
 };
 
-export const getProgress = async (req: any, res: Response) => {
+export const getProgress = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.id;
 

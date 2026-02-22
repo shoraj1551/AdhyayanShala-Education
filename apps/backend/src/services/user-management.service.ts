@@ -1,9 +1,10 @@
 import prisma from '../lib/prisma';
+import { Prisma, Role } from '@prisma/client';
 
 export const getAllUsers = async (page: number = 1, limit: number = 20, search?: string, role?: string) => {
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
 
     if (search) {
         where.OR = [
@@ -13,7 +14,7 @@ export const getAllUsers = async (page: number = 1, limit: number = 20, search?:
     }
 
     if (role && role !== 'ALL') {
-        where.role = role;
+        where.role = role as Role;
     }
 
     const [users, total] = await Promise.all([

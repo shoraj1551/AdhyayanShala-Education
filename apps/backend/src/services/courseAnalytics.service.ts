@@ -23,6 +23,11 @@ export const getCourseAnalytics = async (courseId: string, instructorId: string)
                         }
                     }
                 }
+            },
+            reviews: {
+                select: {
+                    rating: true
+                }
             }
         }
     });
@@ -143,7 +148,7 @@ export const getCourseAnalytics = async (courseId: string, instructorId: string)
             totalEnrollments,
             totalRevenue,
             completionRate,
-            averageRating: 0, // TODO: Implement when reviews are added
+            averageRating: course.reviews.reduce((acc, review) => acc + review.rating, 0) / (course.reviews.length || 1),
             totalLessons
         },
         completionFunnel: {

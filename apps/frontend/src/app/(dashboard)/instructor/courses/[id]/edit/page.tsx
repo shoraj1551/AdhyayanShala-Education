@@ -14,6 +14,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { LiveClassSettingsForm } from "@/components/LiveClassSettingsForm";
+import { TestSeriesScheduler } from "@/components/instructor/TestSeriesScheduler";
 
 interface Lesson {
     id: string;
@@ -33,6 +34,10 @@ interface Test {
     duration: number;
     moduleId?: string;
     order: number;
+    instructions?: string;
+    passMarks?: number;
+    totalMarks?: number;
+    isPublished?: boolean;
 }
 
 interface Module {
@@ -60,17 +65,24 @@ export default function CourseEditorPage() {
     const [newLessonData, setNewLessonData] = useState({
         title: "",
         type: "VIDEO" as "VIDEO" | "TEXT",
-        content: "", // Legacy field, kept for compatibility
+        content: "",
         videoUrl: "",
         summary: "",
-        attachmentUrl: ""
+        attachmentUrl: "",
+        resources: [] as { title: string, url: string }[]
     });
 
     const [uploading, setUploading] = useState(false);
 
     // Test Creation State
     const [addingTestToModuleId, setAddingTestToModuleId] = useState<string | null>(null);
-    const [newTestData, setNewTestData] = useState({ title: "", duration: 60 });
+    const [newTestData, setNewTestData] = useState({
+        title: "",
+        duration: 60,
+        instructions: "",
+        passMarks: 0,
+        isPublished: false
+    });
 
     const fetchCourse = () => {
         if (token && params.id) {
@@ -117,19 +129,22 @@ export default function CourseEditorPage() {
     const handleAddTest = async (moduleId: string) => {
         if (!newTestData.title.trim()) return;
         try {
-            const module = course.modules.find((m: any) => m.id === moduleId);
-            const currentCount = (module?.lessons?.length || 0) + (module?.tests?.length || 0);
+            const targetModule = course.modules.find((m: any) => m.id === moduleId);
+            const currentCount = (targetModule?.lessons?.length || 0) + (targetModule?.tests?.length || 0);
 
             await api.post('/tests', {
                 title: newTestData.title,
                 duration: Number(newTestData.duration),
+                instructions: newTestData.instructions,
+                passMarks: Number(newTestData.passMarks),
+                isPublished: newTestData.isPublished,
                 courseId: course.id,
                 moduleId: moduleId,
                 order: currentCount
             }, token ?? undefined);
 
             setAddingTestToModuleId(null);
-            setNewTestData({ title: "", duration: 60 });
+            setNewTestData({ title: "", duration: 60, instructions: "", passMarks: 0, isPublished: false });
             alert("Test created! Questions can be added later.");
             fetchCourse();
         } catch (error) {
@@ -155,7 +170,8 @@ export default function CourseEditorPage() {
                 content: "",
                 videoUrl: "",
                 summary: "",
-                attachmentUrl: ""
+                attachmentUrl: "",
+                resources: []
             });
             fetchCourse();
         } catch (error) {
@@ -353,9 +369,33 @@ export default function CourseEditorPage() {
                 </Card>
 
                 {/* Live Class Settings */}
-                <div className="mb-8">
-                    <LiveClassSettingsForm courseId={course.id} />
-                </div>
+                {course.type === 'LIVE' && (
+                    <div className="mb-8">
+                        <LiveClassSettingsForm courseId={course.id} />
+                    </div>
+                )}
+
+                {/* Test Series Scheduling */}
+                {course.type === 'TEST_SERIES' && (
+                    <div className="mb-8">
+                        <TestSeriesScheduler
+                            tests={course.modules?.flatMap((m: any) => m.tests || []) || []}
+                            startDate={course.startDate}
+                            onSave={async (updates) => {
+                                try {
+                                    await Promise.all(updates.map(u =>
+                                        api.patch(`/tests/${u.id}`, { availableAt: u.availableAt }, token ?? undefined)
+                                    ));
+                                    alert("Schedule saved successfully!");
+                                    fetchCourse();
+                                } catch (error) {
+                                    console.error(error);
+                                    alert("Failed to save schedule");
+                                }
+                            }}
+                        />
+                    </div>
+                )}
 
                 {course.modules?.map((module: Module) => (
                     <Card key={module.id} className="relative overflow-hidden">
@@ -459,29 +499,68 @@ export default function CourseEditorPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Attachment <span className="text-muted-foreground text-xs">(External URL or Upload PDF/Doc)</span></Label>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-2">
-                                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                        <Label>Additional Resources <span className="text-muted-foreground text-xs">(External Links or Files)</span></Label>
+                                        {newLessonData.resources.map((res, idx) => (
+                                            <div key={idx} className="flex gap-2 mb-2 items-center">
                                                 <Input
-                                                    placeholder="https://drive.google.com/... (PDF/Doc)"
-                                                    value={newLessonData.attachmentUrl || ""}
-                                                    onChange={e => setNewLessonData({ ...newLessonData, attachmentUrl: e.target.value })}
+                                                    placeholder="Title (e.g. Cheat Sheet)"
+                                                    value={res.title}
+                                                    className="flex-1"
+                                                    onChange={e => {
+                                                        const newArr = [...newLessonData.resources];
+                                                        newArr[idx].title = e.target.value;
+                                                        setNewLessonData({ ...newLessonData, resources: newArr });
+                                                    }}
                                                 />
-                                            </div>
-                                            <div className="flex items-center gap-2">
                                                 <Input
-                                                    id={`doc-upload-${module.id}`}
-                                                    type="file"
-                                                    accept=".pdf,.doc,.docx,.txt"
-                                                    className="hidden"
-                                                    onChange={(e) => handleFileUpload(e, 'attachmentUrl')}
+                                                    placeholder="URL"
+                                                    value={res.url}
+                                                    className="flex-1"
+                                                    onChange={e => {
+                                                        const newArr = [...newLessonData.resources];
+                                                        newArr[idx].url = e.target.value;
+                                                        setNewLessonData({ ...newLessonData, resources: newArr });
+                                                    }}
                                                 />
-                                                <Button size="sm" variant="outline" className="w-full" onClick={() => document.getElementById(`doc-upload-${module.id}`)?.click()} disabled={uploading}>
-                                                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                                    Upload Document from Device
+                                                <Button variant="ghost" size="icon" className="text-destructive h-10 w-10 flex-shrink-0" onClick={() => {
+                                                    const newArr = newLessonData.resources.filter((_, i) => i !== idx);
+                                                    setNewLessonData({ ...newLessonData, resources: newArr });
+                                                }}>
+                                                    <Trash className="h-4 w-4" />
                                                 </Button>
                                             </div>
+                                        ))}
+                                        <div className="flex gap-2 mt-2">
+                                            <Button size="sm" variant="outline" onClick={() => {
+                                                setNewLessonData({
+                                                    ...newLessonData,
+                                                    resources: [...newLessonData.resources, { title: "", url: "" }]
+                                                });
+                                            }}>
+                                                <Plus className="h-4 w-4 mr-2" /> Add Link
+                                            </Button>
+                                            <Input
+                                                id={`resource-upload-${module.id}`}
+                                                type="file"
+                                                accept=".pdf,.doc,.docx,.ppt,.pptx,.zip"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file || !token) return;
+                                                    setUploading(true);
+                                                    try {
+                                                        const result = await api.upload(file, token);
+                                                        setNewLessonData({
+                                                            ...newLessonData,
+                                                            resources: [...newLessonData.resources, { title: file.name, url: result.url }]
+                                                        });
+                                                    } catch (err) { console.error(err); alert("Upload failed"); }
+                                                    finally { setUploading(false); }
+                                                }}
+                                            />
+                                            <Button size="sm" variant="outline" onClick={() => document.getElementById(`resource-upload-${module.id}`)?.click()} disabled={uploading}>
+                                                {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />} Upload File
+                                            </Button>
                                         </div>
                                     </div>
 
@@ -496,24 +575,58 @@ export default function CourseEditorPage() {
                                 <div className="bg-purple-50/50 p-4 rounded border border-purple-100 space-y-4 mt-4 animate-in fade-in slide-in-from-top-2">
                                     <h4 className="font-medium text-sm text-purple-900">New Test Details</h4>
 
-                                    <div className="space-y-2">
-                                        <Label>Test Title</Label>
-                                        <Input
-                                            placeholder="e.g. Mid-Module Quiz"
-                                            value={newTestData.title}
-                                            onChange={e => setNewTestData({ ...newTestData, title: e.target.value })}
-                                            className="bg-white"
-                                        />
-                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label>Test Title</Label>
+                                            <Input
+                                                placeholder="e.g. Mid-Module Quiz"
+                                                value={newTestData.title}
+                                                onChange={e => setNewTestData({ ...newTestData, title: e.target.value })}
+                                                className="bg-white"
+                                            />
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label>Duration (minutes)</Label>
-                                        <Input
-                                            type="number"
-                                            value={newTestData.duration}
-                                            onChange={e => setNewTestData({ ...newTestData, duration: Number(e.target.value) })}
-                                            className="bg-white"
-                                        />
+                                        <div className="space-y-2">
+                                            <Label>Instructions (Optional - Markdown supported)</Label>
+                                            <Textarea
+                                                placeholder="Read the passage carefully..."
+                                                value={newTestData.instructions}
+                                                onChange={e => setNewTestData({ ...newTestData, instructions: e.target.value })}
+                                                className="bg-white min-h-[80px]"
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Duration (minutes)</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={newTestData.duration}
+                                                    onChange={e => setNewTestData({ ...newTestData, duration: Number(e.target.value) })}
+                                                    className="bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Pass Marks</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={newTestData.passMarks}
+                                                    onChange={e => setNewTestData({ ...newTestData, passMarks: Number(e.target.value) })}
+                                                    className="bg-white"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id="test-published"
+                                                checked={newTestData.isPublished}
+                                                onChange={(e) => setNewTestData({ ...newTestData, isPublished: e.target.checked })}
+                                                className="w-4 h-4 text-purple-600 rounded"
+                                            />
+                                            <Label htmlFor="test-published">Publish immediately (Visible to students)</Label>
+                                        </div>
                                     </div>
 
                                     <div className="flex gap-2 justify-end pt-2">
@@ -602,7 +715,7 @@ export default function CourseEditorPage() {
                                 {!otpSent ? (
                                     <div className="text-center space-y-4">
                                         <p className="text-sm font-medium text-amber-600">This course has enrolled students. Verification required.</p>
-                                        <p className="text-sm">To verify it's you, we need to send an OTP to your email.</p>
+                                        <p className="text-sm">To verify it&apos;s you, we need to send an OTP to your email.</p>
                                         <Button onClick={handleRequestOtp} className="w-full">Send OTP</Button>
                                     </div>
                                 ) : (

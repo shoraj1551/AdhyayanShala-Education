@@ -59,8 +59,8 @@ export function EnrollmentModal({ course, isOpen, onClose, onSuccess }: Enrollme
         {
             id: 'FULL',
             title: "One-Time Payment",
-            description: "Best Value - Pay upfront and save extra.",
-            discountPercent: 20,
+            description: "Best Value - Pay upfront and save an extra 10%.",
+            discountPercent: 10,
             get total() { return Math.round(basePrice * (1 - this.discountPercent / 100)) },
             get installment() { return this.total },
             installments: 1
@@ -68,8 +68,8 @@ export function EnrollmentModal({ course, isOpen, onClose, onSuccess }: Enrollme
         {
             id: 'INSTALLMENT_2',
             title: "2-Part Installment",
-            description: "Pay 50% now, 50% next month.",
-            discountPercent: 10,
+            description: "Pay 50% now, 50% next month. Save an extra 5%.",
+            discountPercent: 5,
             get total() { return Math.round(basePrice * (1 - this.discountPercent / 100)) },
             get installment() { return Math.round(this.total / 2) },
             installments: 2
@@ -330,17 +330,32 @@ export function EnrollmentModal({ course, isOpen, onClose, onSuccess }: Enrollme
 
                             {/* Summary */}
                             <div className="bg-muted/30 p-3 rounded-lg text-xs space-y-2 mt-4">
+                                {course.price > basePrice && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Course Fee</span>
+                                        <span className="line-through text-muted-foreground">₹{course.price.toLocaleString()}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Original Price</span>
-                                    <span className="line-through text-muted-foreground">₹{basePrice.toLocaleString()}</span>
+                                    <span className="text-muted-foreground">Discounted Price</span>
+                                    <span className={course.price > basePrice ? "text-green-600 font-medium" : "text-muted-foreground"}>₹{basePrice.toLocaleString()}</span>
                                 </div>
-                                <div className="flex justify-between font-medium">
+                                {currentPlan.discountPercent > 0 && (
+                                    <div className="flex justify-between text-green-600">
+                                        <span>Plan Discount ({currentPlan.discountPercent}%)</span>
+                                        <span>- ₹{(basePrice - currentPlan.total).toLocaleString()}</span>
+                                    </div>
+                                )}
+                                <Separator className="my-1" />
+                                <div className="flex justify-between font-bold text-sm">
                                     <span>Total Payable</span>
                                     <span className="text-primary truncate">
                                         ₹{currentPlan.total.toLocaleString()}
-                                        {currentPlan.discountPercent > 0 && ` (Saved ₹${(basePrice - currentPlan.total).toLocaleString()})`}
                                     </span>
                                 </div>
+                                <p className="text-[10px] text-muted-foreground text-center mt-2">
+                                    Total Savings: ₹{(course.price - currentPlan.total).toLocaleString()} ({(Math.round((1 - currentPlan.total / course.price) * 100))}% off)
+                                </p>
                             </div>
                         </div>
                     )}

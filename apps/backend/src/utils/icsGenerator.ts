@@ -1,9 +1,15 @@
 
-export const generateICS = (courseTitle: string, schedules: any[]) => {
+interface ScheduleEntry {
+    dayOfWeek: number;
+    startTime: string;
+    duration?: number;
+}
+
+export const generateICS = (courseTitle: string, schedules: ScheduleEntry[]) => {
     // Simple ICS structure
     let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//ShorajLearning//CourseSchedule//EN\n";
 
-    schedules.forEach((s: any) => {
+    schedules.forEach((s: ScheduleEntry) => {
         // This is a simplified recurrence rule generation
         // Real implementation would need proper date calculation based on dayOfWeek
         // For MVP, we will just put a generic recurring event starting from tomorrow

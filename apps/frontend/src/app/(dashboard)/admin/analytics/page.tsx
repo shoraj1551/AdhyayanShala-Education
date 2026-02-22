@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, BookOpen, GraduationCap, TrendingUp, IndianRupee, Activity } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Users, BookOpen, IndianRupee } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
@@ -13,8 +12,8 @@ interface DashboardStats {
     users: { total: number; students: number; instructors: number };
     revenue: number;
     courses: { total: number; published: number };
-    recentUsers: any[];
-    popularCourses: any[];
+    recentUsers: { id: string; name: string; email: string; role: string; avatar?: string }[];
+    popularCourses: { id: string; title: string; _count: { enrollments: number } }[];
 }
 
 export default function AdminAnalyticsPage() {
@@ -81,16 +80,6 @@ export default function AdminAnalyticsPage() {
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.courses.published}</div>
                         <p className="text-xs text-muted-foreground">out of {stats.courses.total} created</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Now</CardTitle>
-                        <Activity className="h-4 w-4 text-red-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">+573</div>
-                        <p className="text-xs text-muted-foreground">Simulated Real-time</p>
                     </CardContent>
                 </Card>
             </div>
