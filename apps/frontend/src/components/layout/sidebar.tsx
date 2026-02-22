@@ -14,7 +14,8 @@ import {
     BookOpen,
     GraduationCap,
     History,
-    Plus
+    Plus,
+    Users
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -26,6 +27,7 @@ const studentItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { title: "Browse Courses", href: "/courses", icon: Library },
     { title: "My Learning", href: "/my-learning", icon: GraduationCap },
+    { title: "Mentorship", href: "/mentorship", icon: Users },
     { title: "History", href: "/history", icon: History },
     ...commonItems
 ];
@@ -34,6 +36,7 @@ const instructorItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { title: "My Courses", href: "/instructor/courses", icon: BookOpen },
     { title: "Create Course", href: "/instructor/create", icon: Plus },
+    { title: "Mentorship Sessions", href: "/instructor/mentorship", icon: Users },
     { title: "Earnings & Payouts", href: "/instructor/finance", icon: IndianRupee },
     { title: "Market Research", href: "/courses", icon: Library }, // Replaced Browse Courses
     ...commonItems

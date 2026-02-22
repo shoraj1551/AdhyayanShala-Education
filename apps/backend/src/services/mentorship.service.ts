@@ -32,10 +32,7 @@ export const updateInstructorSlots = async (instructorId: string, slots: Array<{
 
 export const getAvailableInstructors = async (expertise?: string) => {
     const where: any = {
-        role: 'INSTRUCTOR',
-        mentorshipSlots: {
-            some: { isActive: true }
-        }
+        role: 'INSTRUCTOR'
     };
 
     if (expertise) {

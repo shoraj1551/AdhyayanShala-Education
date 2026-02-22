@@ -47,7 +47,7 @@ export default function CoursesPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [instructorFilter, setInstructorFilter] = useState<string>("all");
     const [enrollmentFilter, setEnrollmentFilter] = useState<"all" | "enrolled" | "not-enrolled">("all");
-    const [instructors, setInstructors] = useState<Array<{ id: string; name: string }>>([]);
+    const [instructors, setInstructors] = useState<Array<{ name: string }>>([]);
     const { token, user } = useAuth();
 
     const isInstructor = user?.role === 'INSTRUCTOR';
@@ -106,9 +106,9 @@ export default function CoursesPage() {
                     new Map(
                         coursesData
                             .filter((c: Course) => c.instructor)
-                            .map((c: Course) => [c.instructor!.id, { id: c.instructor!.id, name: c.instructor!.name }])
+                            .map((c: Course) => [c.instructor!.name, { name: c.instructor!.name }])
                     ).values()
-                ) as Array<{ id: string; name: string }>;
+                ) as Array<{ name: string }>;
                 setInstructors(uniqueInstructors);
             } catch (err) {
                 console.error('Error fetching courses:', err);
@@ -124,7 +124,7 @@ export default function CoursesPage() {
 
     let filteredCourses = instructorFilter === "all"
         ? courses
-        : courses.filter(c => c.instructor?.id === instructorFilter);
+        : courses.filter(c => c.instructor?.name === instructorFilter);
 
     if (enrollmentFilter === "enrolled") {
         filteredCourses = filteredCourses.filter(c => c.isEnrolled);
@@ -240,7 +240,7 @@ export default function CoursesPage() {
                         <SelectContent>
                             <SelectItem value="all">All Instructors</SelectItem>
                             {instructors.map(instructor => (
-                                <SelectItem key={instructor.id} value={instructor.id}>
+                                <SelectItem key={instructor.name} value={instructor.name}>
                                     {instructor.name}
                                 </SelectItem>
                             ))}

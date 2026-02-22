@@ -18,10 +18,24 @@ async function main() {
             name: 'Shoraj Tomer',
             role: 'INSTRUCTOR',
             bio: 'Experienced instructor specializing in web development and system design',
+            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200&h=200',
+            expertise: 'React, Node.js, System Design, DevOps',
+            mentorshipFee: 500,
         },
     });
 
     console.log('✅ Created instructor:', instructor.email);
+
+    // Create default mentorship slots for Shoraj
+    await prisma.mentorshipSlot.createMany({
+        data: [
+            { instructorId: instructor.id, dayOfWeek: 1, startTime: '10:00', endTime: '12:00', isActive: true },
+            { instructorId: instructor.id, dayOfWeek: 3, startTime: '10:00', endTime: '12:00', isActive: true },
+            { instructorId: instructor.id, dayOfWeek: 5, startTime: '10:00', endTime: '12:00', isActive: true },
+        ]
+    });
+
+    console.log('✅ Created mentorship slots for:', instructor.name);
 
     // Create a student account for testing
     const studentPassword = await bcrypt.hash('student123', 10);

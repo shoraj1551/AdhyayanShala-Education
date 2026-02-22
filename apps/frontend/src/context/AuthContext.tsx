@@ -76,13 +76,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const logout = React.useCallback((shouldRedirect: boolean = true) => {
+        const currentRole = user?.role?.toLowerCase();
         setToken(null);
         setUser(null);
         localStorage.removeItem("token");
         if (shouldRedirect) {
-            router.push("/login");
+            const redirectUrl = currentRole ? `/login?role=${currentRole}` : "/login";
+            router.push(redirectUrl);
         }
-    }, [router]);
+    }, [router, user]);
 
     const updateUser = (newUser: User) => {
         setUser(newUser);

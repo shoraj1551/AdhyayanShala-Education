@@ -71,7 +71,7 @@ export const getCourseById = async (courseId: string) => {
         where: { id: courseId },
         include: {
             instructor: {
-                select: { name: true }
+                select: { name: true, id: true, email: true, avatar: true, bio: true }
             },
             modules: {
                 orderBy: { order: 'asc' },

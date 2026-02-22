@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, XCircle, Clock, FileText, UserPlus, LayoutTemplate, Calendar, Trophy, Shield } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle, XCircle, Clock, FileText, UserPlus, LayoutTemplate, Calendar, Trophy, Shield, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 export default function HistoryPage() {
     const { token, user } = useAuth();
@@ -22,7 +23,6 @@ export default function HistoryPage() {
 
         api.get(endpoint, token)
             .then(data => {
-                // Ensure array
                 setHistory(Array.isArray(data) ? data : []);
             })
             .catch(err => {
@@ -59,183 +59,118 @@ export default function HistoryPage() {
     ];
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-            <div className="h-12 w-12 border-4 border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
-            <div className="text-zinc-500 font-black uppercase tracking-widest text-xs animate-pulse">Syncing Learning Records...</div>
+        <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary/40" />
+            <div className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Syncing Records...</div>
         </div>
     );
 
-    /* INSTRUCTOR VIEW - Professional Audit Log Style */
-    if (isInstructor) {
-        return (
-            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-6xl mx-auto px-4 py-10">
-                <div className="relative overflow-hidden rounded-3xl bg-zinc-900 p-8 md:p-12 shadow-2xl">
-                    <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
-                    <div className="relative space-y-4">
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">
-                            Activity <span className="text-primary italic">Log</span>
-                        </h1>
-                        <p className="text-zinc-400 text-base max-w-md font-medium">Complete audit trail of platform interactions and enrollments.</p>
-                    </div>
-                </div>
-
-                <Card className="border-2 border-white/50 bg-white/40 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden">
-                    <CardHeader className="p-8 border-b border-zinc-100/50 bg-white/20">
-                        <CardTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
-                            <LayoutTemplate className="text-primary" />
-                            Recent activity
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {history.length === 0 ? (
-                            <div className="p-20 text-center space-y-4">
-                                <div className="mx-auto w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400">
-                                    <Clock size={32} />
-                                </div>
-                                <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">No activity recorded yet</p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-zinc-100/50">
-                                {history.map((item) => {
-                                    let Icon = FileText;
-                                    let iconColor = "text-zinc-400";
-                                    let iconBg = "bg-zinc-100";
-
-                                    if (item.type === 'course_published') {
-                                        Icon = LayoutTemplate;
-                                        iconColor = "text-violet-600";
-                                        iconBg = "bg-violet-50";
-                                    } else if (item.type === 'student_enrolled') {
-                                        Icon = UserPlus;
-                                        iconColor = "text-emerald-600";
-                                        iconBg = "bg-emerald-50";
-                                    }
-
-                                    return (
-                                        <div key={item.id} className="group flex items-center gap-6 p-6 hover:bg-white/60 transition-all">
-                                            <div className={cn("p-4 rounded-2xl shrink-0 shadow-sm transform group-hover:scale-110 transition-transform", iconBg)}>
-                                                <Icon className={cn("h-6 w-6", iconColor)} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-4">
-                                                    <p className="font-black text-lg text-zinc-900 truncate">{item.title}</p>
-                                                    <div className="flex items-center gap-2 text-zinc-400 font-bold text-[10px] uppercase tracking-widest bg-zinc-50 px-3 py-1.5 rounded-full border border-zinc-100">
-                                                        <Calendar size={12} />
-                                                        {format(new Date(item.timestamp), 'MMM d, h:mm a')}
-                                                    </div>
-                                                </div>
-                                                <p className="text-zinc-500 font-medium mt-1">{item.description}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
-    /* STUDENT VIEW */
     return (
-        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-6xl mx-auto px-4 py-10">
-            {/* Header */}
-            <div className="relative overflow-hidden rounded-3xl bg-zinc-900 p-8 md:p-12 shadow-2xl">
-                <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary/20 rounded-full blur-[100px]" />
-                <div className="relative space-y-4">
-                    <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">
-                        Learning <span className="text-primary italic">History</span>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Standard Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent flex items-center gap-3">
+                        {isInstructor ? "Activity Log" : "Learning History"}
                     </h1>
-                    <p className="text-zinc-400 text-base max-w-md font-medium">A visual timeline of your academic achievements and milestones.</p>
+                    <p className="text-muted-foreground mt-1 text-lg">
+                        {isInstructor
+                            ? "Review a complete audit trail of your platform interactions and student enrollments."
+                            : "A comprehensive timeline of your academic achievements, milestones, and progress."}
+                    </p>
                 </div>
             </div>
 
-            {/* Stats Bar */}
+            {/* Stats Bar - Professional Style */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {stats.map((stat, i) => (
-                    <Card key={i} className="border-2 border-white/50 bg-white/40 backdrop-blur-xl shadow-xl rounded-3xl overflow-hidden transition-all hover:translate-y-[-4px]">
+                    <Card key={i} className="border-none shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 bg-white">
                         <CardContent className="p-6 flex items-center gap-6">
-                            <div className={cn("p-4 rounded-2xl shadow-sm", stat.bg)}>
+                            <div className={cn("p-4 rounded-2xl", stat.bg)}>
                                 <stat.icon className={cn("h-8 w-8", stat.color)} />
                             </div>
                             <div>
-                                <p className="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">{stat.label}</p>
-                                <p className="text-3xl font-black tracking-tight text-zinc-900">{stat.value}</p>
+                                <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">{stat.label}</p>
+                                <p className="text-3xl font-bold tracking-tight text-zinc-900">{stat.value}</p>
                             </div>
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
-            {/* List */}
+            {/* Timeline List */}
             <div className="space-y-6">
-                <div className="flex items-center justify-between px-2">
-                    <h2 className="text-xl font-black tracking-tight text-zinc-900 uppercase tracking-widest text-sm flex items-center gap-2">
-                        <div className="w-2 h-6 bg-primary rounded-full" />
-                        Timeline
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-primary rounded-full" />
+                        Platform Timeline
                     </h2>
+                    <span className="text-muted-foreground font-semibold text-sm">{history.length} event{history.length !== 1 ? 's' : ''} recorded</span>
                 </div>
 
-                {history.map((item) => (
-                    <Card key={item.id} className={cn(
-                        "group border-2 border-white/50 bg-white/40 backdrop-blur-xl shadow-xl rounded-3xl overflow-hidden transition-all hover:bg-white/60",
-                        item.type === 'COURSE_COMPLETION' ? "hover:shadow-emerald-500/10" : "hover:shadow-primary/10"
-                    )}>
-                        <CardContent className="p-0">
-                            <div className="flex flex-col md:flex-row items-center gap-8 p-8">
-                                <div className={cn(
-                                    "p-6 rounded-3xl shadow-inner transform group-hover:rotate-6 transition-all duration-500 shrink-0",
-                                    item.type === 'COURSE_COMPLETION' ? "bg-emerald-500/10 text-emerald-600" : "bg-zinc-100 text-zinc-400"
-                                )}>
-                                    {item.type === 'COURSE_COMPLETION' ? (
-                                        <Trophy className="h-10 w-10" />
-                                    ) : (
-                                        <FileText className="h-10 w-10" />
-                                    )}
-                                </div>
+                {history.length === 0 ? (
+                    <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-zinc-200 shadow-sm">
+                        <div className="p-4 bg-zinc-50 rounded-full inline-block mb-4">
+                            <Clock className="h-12 w-12 text-zinc-300" />
+                        </div>
+                        <h3 className="text-xl font-bold text-zinc-900">No activity yet</h3>
+                        <p className="text-muted-foreground mt-2 max-w-sm mx-auto">Your journey starts here. Take your first lesson or enroll in a course to see your progress.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {history.map((item) => {
+                            let Icon = FileText;
+                            let iconColor = "text-blue-500";
+                            let iconBg = "bg-blue-500/10";
 
-                                <div className="flex-1 min-w-0 space-y-2">
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        <h3 className="text-2xl font-black tracking-tight text-zinc-900 truncate">{item.title}</h3>
-                                        <span className={cn(
-                                            "flex items-center gap-2 text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full border shadow-sm self-start md:self-center",
-                                            item.type === 'COURSE_COMPLETION' ? "text-emerald-600 bg-emerald-50 border-emerald-100" :
-                                                item.passed ? "text-blue-600 bg-blue-50 border-blue-100" : "text-red-600 bg-red-50 border-red-100"
-                                        )}>
-                                            {item.type === 'COURSE_COMPLETION' ? (
-                                                <><CheckCircle className="h-4 w-4" /> COMPLETED</>
-                                            ) : (
-                                                <>{item.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />} {item.passed ? "PASSED" : "FAILED"}</>
+                            if (item.type === 'COURSE_COMPLETION' || item.type === 'course_published') {
+                                Icon = Trophy;
+                                iconColor = "text-emerald-500";
+                                iconBg = "bg-emerald-500/10";
+                            } else if (item.type === 'student_enrolled' || item.type === 'ENROLLMENT') {
+                                Icon = UserPlus;
+                                iconColor = "text-indigo-500";
+                                iconBg = "bg-indigo-500/10";
+                            }
+
+                            return (
+                                <Card key={item.id} className="border-none shadow-sm hover:shadow-md transition-all duration-300 bg-white group overflow-hidden">
+                                    <CardContent className="p-6">
+                                        <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                                            <div className={cn("p-4 rounded-xl shrink-0 transition-transform group-hover:scale-105", iconBg)}>
+                                                <Icon className={cn("h-6 w-6", iconColor)} />
+                                            </div>
+
+                                            <div className="flex-1 min-w-0 space-y-1">
+                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                                                    <h3 className="text-lg font-bold text-zinc-900 truncate group-hover:text-primary transition-colors">
+                                                        {item.title}
+                                                    </h3>
+                                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px] uppercase tracking-widest bg-zinc-50 px-3 py-1.5 rounded-full border border-zinc-100">
+                                                        <Calendar className="h-3 w-3" />
+                                                        {format(new Date(item.timestamp || item.date), 'MMM d, yyyy • h:mm a')}
+                                                    </div>
+                                                </div>
+                                                <p className="text-muted-foreground text-sm font-medium line-clamp-1">{item.description}</p>
+                                            </div>
+
+                                            {item.score !== undefined && (
+                                                <div className="hidden md:block text-right px-6 border-l border-zinc-100">
+                                                    <div className="text-xl font-bold text-zinc-900">{item.score} pts</div>
+                                                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                        {item.passed ? "Passed" : "Attempted"}
+                                                    </div>
+                                                </div>
                                             )}
-                                        </span>
-                                    </div>
 
-                                    <div className="flex flex-wrap items-center gap-6 pt-2">
-                                        <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs uppercase tracking-widest">
-                                            <Calendar size={14} className="text-zinc-400" />
-                                            {item.date ? format(new Date(item.date), 'MMM d, yyyy') : 'N/A'}
+                                            <div className="md:pl-4">
+                                                <ArrowRight className="h-5 w-5 text-zinc-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs uppercase tracking-widest">
-                                            <Shield size={14} className="text-zinc-400" />
-                                            {item.type === 'COURSE_COMPLETION' ? 'Status: Certified' : `Score: ${item.score} pts`}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-
-                {history.length === 0 && (
-                    <div className="flex flex-col items-center justify-center min-h-[40vh] text-center space-y-6 border-4 border-dashed border-zinc-100 rounded-[40px] bg-zinc-50/30">
-                        <div className="p-8 bg-white shadow-2xl rounded-full text-zinc-300">
-                            <LayoutTemplate size={48} />
-                        </div>
-                        <div className="max-w-md mx-auto space-y-2">
-                            <h3 className="text-2xl font-black text-zinc-900 tracking-tight">No achievements yet</h3>
-                            <p className="text-zinc-500 font-medium">Your learning journey starts with your first enrollment. Take a course and conquer your first test!</p>
-                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
                 )}
             </div>

@@ -31,10 +31,11 @@ export default function LandingPage() {
   // Fetch Socials
   React.useEffect(() => {
     getSocials()
-      .then(data => {
+      .then(res => {
+        const data = (res as any).data || res;
         if (Array.isArray(data)) setSocials(data);
       })
-      .catch(err => console.error("Failed to fetch socials", err));
+      .catch(err => console.error("LandingPage: Failed to fetch socials", err));
   }, []);
 
   // Fetch News
@@ -42,10 +43,10 @@ export default function LandingPage() {
     // Dynamically import api to avoid SSR issues if any, or just call it
     // Assuming api is client-side safe
     import("@/lib/api").then(({ api }) => {
-      // Try /courses/announcements 
-      api.get("/courses/announcements").then(data => {
+      api.get("/courses/announcements").then(res => {
+        const data = (res as any).data || res;
         if (Array.isArray(data)) setAnnouncements(data);
-      }).catch(err => console.error("Failed to fetch news", err));
+      }).catch(err => console.error("LandingPage: Failed to fetch news", err));
     });
   }, []);
 

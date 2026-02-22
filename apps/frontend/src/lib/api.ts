@@ -1,10 +1,6 @@
 // API URL Configuration - Fail-fast if missing in production
 const API_URL = process.env.NEXT_PUBLIC_API_URL ||
-    (process.env.NODE_ENV === 'development' ? 'http://localhost:3001/api' : '');
-
-if (!API_URL) {
-    throw new Error('NEXT_PUBLIC_API_URL environment variable is required in production');
-}
+    (process.env.NODE_ENV === 'development' ? 'http://localhost:3001/api' : '/api');
 
 export interface TeamMemberDTO {
     name: string;
@@ -63,6 +59,10 @@ export const api = {
             return handleResponse(res);
         } catch (error) {
             console.error(`API GET Error: ${API_URL}${url}`, error);
+            // Enhance the error message for better user visibility
+            if (error instanceof TypeError && error.message === "Failed to fetch") {
+                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running.`);
+            }
             throw error;
         }
     },
@@ -74,12 +74,20 @@ export const api = {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-        const res = await fetch(`${API_URL}${url}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-        });
-        return handleResponse(res);
+        try {
+            const res = await fetch(`${API_URL}${url}`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+            });
+            return handleResponse(res);
+        } catch (error) {
+            console.error(`API POST Error: ${API_URL}${url}`, error);
+            if (error instanceof TypeError && error.message === "Failed to fetch") {
+                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running.`);
+            }
+            throw error;
+        }
     },
 
     put: async (url: string, body: unknown, token?: string) => {
@@ -89,12 +97,20 @@ export const api = {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-        const res = await fetch(`${API_URL}${url}`, {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify(body),
-        });
-        return handleResponse(res);
+        try {
+            const res = await fetch(`${API_URL}${url}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(body),
+            });
+            return handleResponse(res);
+        } catch (error) {
+            console.error(`API PUT Error: ${API_URL}${url}`, error);
+            if (error instanceof TypeError && error.message === "Failed to fetch") {
+                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running.`);
+            }
+            throw error;
+        }
     },
 
     patch: async (url: string, body: unknown, token?: string) => {
@@ -104,12 +120,20 @@ export const api = {
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-        const res = await fetch(`${API_URL}${url}`, {
-            method: 'PATCH',
-            headers,
-            body: JSON.stringify(body),
-        });
-        return handleResponse(res);
+        try {
+            const res = await fetch(`${API_URL}${url}`, {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify(body),
+            });
+            return handleResponse(res);
+        } catch (error) {
+            console.error(`API PATCH Error: ${API_URL}${url}`, error);
+            if (error instanceof TypeError && error.message === "Failed to fetch") {
+                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running.`);
+            }
+            throw error;
+        }
     },
 
     delete: async (url: string, body?: unknown, token?: string) => {
@@ -137,13 +161,21 @@ export const api = {
         if (actualToken) {
             headers['Authorization'] = `Bearer ${actualToken}`;
         }
-        const res = await fetch(`${API_URL}${url}`, {
-            method: 'DELETE',
-            headers,
-            body: actualBody ? JSON.stringify(actualBody) : undefined,
-        });
-        if (res.status === 204) return;
-        return handleResponse(res);
+        try {
+            const res = await fetch(`${API_URL}${url}`, {
+                method: 'DELETE',
+                headers,
+                body: actualBody ? JSON.stringify(actualBody) : undefined,
+            });
+            if (res.status === 204) return;
+            return handleResponse(res);
+        } catch (error) {
+            console.error(`API DELETE Error: ${API_URL}${url}`, error);
+            if (error instanceof TypeError && error.message === "Failed to fetch") {
+                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running.`);
+            }
+            throw error;
+        }
     },
 
     upload: async (file: File, token?: string) => {
@@ -167,11 +199,13 @@ export const api = {
 async function handleResponse(res: Response) {
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        const error = new Error(data.message || 'An error occurred') as Error & { data?: unknown };
-        error.data = data; // Attach full data including validation errors
+        const message = data.error?.message || data.message || 'An error occurred';
+        const error = new Error(message) as Error & { data?: unknown };
+        error.data = data;
         throw error;
     }
-    return res.json();
+    const json = await res.json();
+    return json.data !== undefined ? json.data : json;
 }
 
 // Helper specific to tests

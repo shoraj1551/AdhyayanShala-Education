@@ -20,8 +20,13 @@ export function NewsTicker() {
 
     useEffect(() => {
         api.get('/courses/announcements')
-            .then(setNews)
-            .catch(err => console.error("Failed to fetch news", err));
+            .then((res: any) => {
+                const data = res.data || res;
+                if (Array.isArray(data)) {
+                    setNews(data);
+                }
+            })
+            .catch(err => console.error("NewsTicker: Failed to fetch news", err));
     }, []);
 
     if (!isVisible || news.length === 0) return null;

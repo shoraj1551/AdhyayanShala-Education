@@ -250,6 +250,8 @@ model Enrollment {
   notify1h    Boolean @default(false)
   notifySMS   Boolean @default(false)
   notifyEmail Boolean @default(true)
+
+  @@unique([userId, courseId])
 }
 
 model Test {
@@ -379,6 +381,12 @@ model Payment {
   providerPaymentId String?
   providerOrderId   String?
   signature         String?
+  
+  // Manual Verification Fields
+  proofUrl          String?  // Screenshot URL
+  transactionId     String?  // User-entered transaction ID
+  verifiedBy        String?  // Admin ID who verified it
+  adminNote         String?  // Rejection reason or notes
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

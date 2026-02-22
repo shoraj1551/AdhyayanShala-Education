@@ -31,12 +31,18 @@ export function NotificationBell() {
 
     const fetchNotifications = () => {
         if (!token) return;
+        // Use full path /api/courses/notifications via the helper
         api.get('/courses/notifications', token)
-            .then((data: Notification[]) => {
-                setNotifications(data);
-                setUnreadCount(data.filter(n => !n.isRead).length);
+            .then((res: any) => {
+                const data = res.data || res;
+                if (Array.isArray(data)) {
+                    setNotifications(data);
+                    setUnreadCount(data.filter(n => !n.isRead).length);
+                }
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error("Notification Fetch Error:", err);
+            });
     };
 
     useEffect(() => {

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { PlayCircle, FileText, CheckCircle, ChevronLeft, ChevronRight, Menu, BookOpen, Download, ExternalLink, Video, Lock } from "lucide-react";
+import { PlayCircle, FileText, CheckCircle, ChevronLeft, ChevronRight, Menu, BookOpen, Download, ExternalLink, Video, Lock, Users, Clock } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ interface Lesson {
     summary?: string;
     attachmentUrl?: string;
     resources?: { title: string, url: string }[];
+    order: number;
 }
 
 interface Test {
@@ -48,7 +49,8 @@ interface Module {
     id: string;
     title: string;
     lessons: Lesson[];
-    tests?: Test[];
+    tests: Test[];
+    order: number;
 }
 
 export interface CourseContent {
@@ -56,16 +58,292 @@ export interface CourseContent {
     title: string;
     description: string;
     type: string;
+    level: string;
     modules: Module[];
     tests: unknown[];
-    instructor?: { id: string; name: string; email?: string };
-    _count: { modules: number, tests: number };
+    instructor?: {
+        id: string;
+        name: string;
+        email?: string;
+        avatar?: string;
+        bio?: string;
+    };
+    _count: { modules: number, tests: number, enrollments?: number };
     price: number;
     discountedPrice?: number;
     isFree?: boolean;
-    meetingLink?: string;   // For LIVE courses — clickable join link
+    meetingLink?: string;
     brochureUrl?: string;
+    promoVideoUrl?: string;
+    thumbnailUrl?: string;
+    updatedAt: string;
 }
+
+const CourseLandingView = ({
+    course,
+    onStartLearning,
+    handleEnroll,
+    isEnrolled
+}: {
+    course: CourseContent,
+    onStartLearning: () => void,
+    handleEnroll: () => void,
+    isEnrolled: boolean
+}) => {
+    return (
+        <div className="flex flex-col min-h-screen bg-background">
+            {/* Hero Section */}
+            <section className="relative bg-white pt-24 pb-32 px-4 border-b border-slate-100">
+                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20" />
+                <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
+                    <div className="space-y-10 animate-in fade-in slide-in-from-left duration-1000">
+                        <div className="inline-flex items-center gap-2 bg-primary/5 text-primary px-4 py-2 rounded-2xl text-[10px] font-black tracking-[0.2em] border border-primary/10 uppercase">
+                            <BookOpen className="h-4 w-4" />
+                            <span>{course.level} Level Curriculum</span>
+                        </div>
+                        <h1 className="text-6xl md:text-7xl font-black tracking-tight leading-[1.1] text-zinc-950">
+                            {course.title}
+                        </h1>
+                        <p className="text-xl text-zinc-500 leading-relaxed max-w-xl font-semibold">
+                            {course.description || "Transform your career with our industry-validated curriculum and personalized mentorship program."}
+                        </p>
+
+                        <div className="flex flex-wrap gap-5 pt-4">
+                            {isEnrolled ? (
+                                <Button size="lg" onClick={onStartLearning} className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 h-16 rounded-[1.5rem] text-xl font-black shadow-xl shadow-primary/20 group transition-all">
+                                    Continue Learning
+                                    <PlayCircle className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
+                                </Button>
+                            ) : (
+                                <>
+                                    <Button size="lg" onClick={handleEnroll} className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 h-16 rounded-[1.5rem] text-xl font-black shadow-xl shadow-primary/20 transition-all">
+                                        Enroll Now - ₹{(course.discountedPrice || course.price).toLocaleString()}
+                                    </Button>
+                                    <Button size="lg" variant="outline" onClick={onStartLearning} className="border-slate-200 bg-white hover:bg-slate-50 text-zinc-950 px-10 h-16 rounded-[1.5rem] text-xl font-black shadow-sm transition-all">
+                                        Free Preview
+                                    </Button>
+                                    {course.brochureUrl && (
+                                        <Button size="lg" variant="ghost" asChild className="text-primary hover:bg-primary/5 px-10 h-16 rounded-[1.5rem] text-xl font-black transition-all">
+                                            <a href={course.brochureUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                                                <Download className="h-6 w-6" />
+                                                Brochure
+                                            </a>
+                                        </Button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="relative space-y-6">
+                        <div className="relative aspect-video rounded-[2.5rem] overflow-hidden shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] border border-slate-200 group animate-in fade-in slide-in-from-right duration-1000">
+                            {course.promoVideoUrl ? (
+                                <iframe
+                                    width="100%"
+                                    height="100%"
+                                    src={`https://www.youtube.com/embed/${course.promoVideoUrl.split('v=')[1]?.split('&')[0] || course.promoVideoUrl.split('/').pop()}`}
+                                    title="Promotional Video"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="absolute inset-0 w-full h-full"
+                                />
+                            ) : (
+                                <img
+                                    src={course.thumbnailUrl || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200"}
+                                    alt={course.title}
+                                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                                />
+                            )}
+                            {!course.promoVideoUrl && (
+                                <div className="absolute inset-0 bg-zinc-900/60 flex flex-col items-center justify-center group-hover:bg-zinc-900/40 transition-all cursor-pointer" onClick={onStartLearning}>
+                                    <div className="h-24 w-24 bg-white/20 backdrop-blur-3xl border border-white/30 rounded-full flex items-center justify-center group-hover:scale-125 transition-all shadow-2xl">
+                                        <PlayCircle className="h-12 w-12 text-white" />
+                                    </div>
+                                    <p className="mt-6 text-[10px] font-black tracking-[0.3em] uppercase opacity-80 group-hover:opacity-100 transition-opacity text-white">Preview Module</p>
+                                </div>
+                            )}
+                        </div>
+                        {course.promoVideoUrl && (
+                            <div className="flex items-center gap-3 px-6 py-3 bg-white border border-slate-100 rounded-2xl w-fit mx-auto lg:mx-0 shadow-sm">
+                                <Video className="h-4 w-4 text-primary" />
+                                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-slate-500">Course Introduction & Promotional Video</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* Content Section */}
+            <main className="max-w-7xl mx-auto px-4 py-24 grid lg:grid-cols-3 gap-20">
+                <div className="lg:col-span-2 space-y-20">
+                    {/* Course Overview */}
+                    <section className="space-y-10">
+                        <div className="flex items-end justify-between">
+                            <div className="space-y-4">
+                                <h2 className="text-5xl font-black tracking-tight flex items-center gap-4">
+                                    <BookOpen className="h-10 w-10 text-primary" />
+                                    Curriculum
+                                </h2>
+                                <p className="text-zinc-500 font-bold text-lg">Master the skills with our comprehensive step-by-step program.</p>
+                            </div>
+                            {course.brochureUrl && (
+                                <Button variant="ghost" asChild className="hidden sm:flex text-primary hover:text-primary/80 font-black gap-2 h-12 rounded-2xl bg-primary/5 hover:bg-primary/10 border border-primary/10">
+                                    <a href={course.brochureUrl} target="_blank" rel="noopener noreferrer">
+                                        <Download className="h-5 w-5" />
+                                        Download Brochure
+                                    </a>
+                                </Button>
+                            )}
+                        </div>
+
+                        <div className="space-y-8">
+                            {course.modules.sort((a, b) => (a.order || 0) - (b.order || 0)).map((module, mIdx) => (
+                                <div key={module.id} className="border border-muted rounded-[2.5rem] overflow-hidden bg-muted/20 hover:bg-muted/30 transition-all duration-500 group">
+                                    <div className="px-10 py-8 flex justify-between items-center bg-background/50 border-b border-muted">
+                                        <div className="flex items-center gap-6">
+                                            <span className="w-12 h-12 bg-white text-zinc-950 border border-slate-200 rounded-2xl flex items-center justify-center font-black shadow-sm group-hover:shadow-md transition-all">
+                                                {String(mIdx + 1).padStart(2, '0')}
+                                            </span>
+                                            <h3 className="text-2xl font-black tracking-tight">{module.title}</h3>
+                                        </div>
+                                        {mIdx < 2 && (
+                                            <span className="bg-green-500/10 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border border-green-500/20">
+                                                Free Preview
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="p-6 space-y-3">
+                                        {module.lessons.sort((a, b) => (a.order || 0) - (b.order || 0)).map((lesson) => (
+                                            <div key={lesson.id} className="flex items-center justify-between px-8 py-5 rounded-[1.5rem] bg-transparent hover:bg-background hover:shadow-xl hover:shadow-black/5 transition-all group/lesson">
+                                                <div className="flex items-center gap-5">
+                                                    <div className="p-3 bg-muted rounded-2xl group-hover/lesson:bg-primary/10 group-hover/lesson:text-primary transition-colors">
+                                                        {lesson.type === 'VIDEO' ? <PlayCircle className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                                                    </div>
+                                                    <span className="font-bold text-lg text-zinc-600 group-hover/lesson:text-zinc-900 transition-colors">{lesson.title}</span>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-xs font-black text-muted-foreground tabular-nums">{lesson.duration}m</span>
+                                                    {mIdx < 2 ? (
+                                                        <Button variant="ghost" size="sm" onClick={onStartLearning} className="hover:bg-primary/10 hover:text-primary rounded-xl font-black text-[10px] items-center gap-2">
+                                                            Preview <ChevronRight className="h-3 w-3" />
+                                                        </Button>
+                                                    ) : (
+                                                        <Lock className="h-4 w-4 text-zinc-300" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+
+                <aside className="space-y-10">
+                    {/* Fast Stats */}
+                    <div className="bg-white p-12 rounded-[2.5rem] shadow-[0_40px_80px_rgba(0,0,0,0.05)] border border-slate-100 space-y-10 sticky top-24">
+                        <div className="space-y-8">
+                            <h3 className="text-3xl font-black tracking-tight text-zinc-900">High-Level Details</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-5 p-5 rounded-[1.5rem] bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-colors">
+                                    <div className="w-14 h-14 bg-white rounded-[1.25rem] flex items-center justify-center shadow-sm border border-slate-100">
+                                        <PlayCircle className="h-7 w-7 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest leading-none mb-1">Curriculum</p>
+                                        <p className="text-xl font-black tabular-nums text-zinc-900">{course.modules.reduce((acc, m) => acc + m.lessons.length, 0)} Units</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-5 p-5 rounded-[1.5rem] bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-colors">
+                                    <div className="w-14 h-14 bg-white rounded-[1.25rem] flex items-center justify-center shadow-sm border border-slate-100">
+                                        <Users className="h-7 w-7 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest leading-none mb-1">Enrolled</p>
+                                        <p className="text-xl font-black tabular-nums text-zinc-900">{course._count.enrollments || 0}+ students</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-5 p-5 rounded-[1.5rem] bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-colors">
+                                    <div className="w-14 h-14 bg-white rounded-[1.25rem] flex items-center justify-center shadow-sm border border-slate-100">
+                                        <Clock className="h-7 w-7 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-zinc-400 font-black uppercase tracking-widest leading-none mb-1">Last Update</p>
+                                        <p className="text-xl font-black text-zinc-900">{new Date(course.updatedAt).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Instructor Details */}
+                        {course.instructor && (
+                            <div className="pt-10 border-t border-slate-100 space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-2xl font-black tracking-tight text-zinc-900">Lead Mentor</h3>
+                                    <div className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[8px] font-black uppercase tracking-widest border border-primary/20">Verified Expert</div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <div className="h-24 w-24 rounded-[2rem] overflow-hidden border border-slate-200 shadow-lg p-1 bg-white">
+                                        <img
+                                            src={course.instructor.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200&h=200"}
+                                            alt={course.instructor.name}
+                                            className="w-full h-full object-cover rounded-[1.5rem]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-2xl font-black text-zinc-950">{course.instructor.name}</h4>
+                                        <p className="text-xs font-black text-primary uppercase tracking-[0.2em] leading-none mt-2">Principal Engineering Manager</p>
+                                        <div className="flex gap-2 mt-4 text-[10px] text-zinc-400 font-bold">
+                                            <span>{course._count.enrollments || 0}+ Mentored</span>
+                                            <span>•</span>
+                                            <span>10+ Years Exp</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <p className="text-zinc-500 leading-relaxed font-semibold text-sm italic pl-6 border-l-4 border-primary/20">
+                                        &ldquo;{course.instructor.bio || "Dedicated to empowering students through high-quality education and mentorship."}&rdquo;
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="pt-4">
+                            {isEnrolled ? (
+                                <Button size="lg" onClick={onStartLearning} className="w-full bg-zinc-950 hover:bg-zinc-800 text-white h-20 rounded-[1.5rem] text-2xl font-black shadow-xl transition-all">
+                                    Open Player
+                                </Button>
+                            ) : (
+                                <div className="space-y-4">
+                                    <Button size="lg" onClick={handleEnroll} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-20 rounded-[1.5rem] text-2xl font-black shadow-xl shadow-primary/20 transition-all">
+                                        Enroll Now
+                                    </Button>
+                                    <Button variant="outline" size="lg" onClick={onStartLearning} className="w-full border-slate-200 bg-white hover:bg-slate-50 text-zinc-950 h-20 rounded-[1.5rem] text-2xl font-black shadow-sm transition-all">
+                                        Free Preview
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {course.brochureUrl && (
+                        <div className="p-10 rounded-[3rem] bg-primary/5 border border-primary/20 space-y-6">
+                            <h4 className="text-xl font-black tracking-tight">Need more details?</h4>
+                            <p className="text-sm font-bold text-zinc-500 leading-relaxed">Download our detailed course brochure to learn about the outcomes, tools, and certifications.</p>
+                            <Button variant="default" asChild className="w-full bg-primary hover:bg-primary/90 text-white font-black h-16 rounded-3xl">
+                                <a href={course.brochureUrl} target="_blank" rel="noopener noreferrer">
+                                    <Download className="mr-2 h-5 w-5" />
+                                    Download Brochure
+                                </a>
+                            </Button>
+                        </div>
+                    )}
+                </aside>
+            </main>
+        </div>
+    );
+};
 
 export default function CoursePlayerPage() {
     const params = useParams();
@@ -82,6 +360,7 @@ export default function CoursePlayerPage() {
     const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
     const [demoForm, setDemoForm] = useState({ name: '', email: '', phone: '' });
     const [submittingDemo, setSubmittingDemo] = useState(false);
+    const [showPlayer, setShowPlayer] = useState(false);
 
     const handleDemoRequest = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -252,11 +531,52 @@ export default function CoursePlayerPage() {
         return content.type === 'VIDEO' || content.type === 'TEXT';
     };
 
+    if (!showPlayer) {
+        return (
+            <>
+                <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0 z-50 sticky top-0 shadow-sm backdrop-blur-md bg-white/80">
+                    <div className="flex items-center gap-4">
+                        <Link href="/courses" className="text-slate-400 hover:text-zinc-900 transition-colors bg-slate-50 p-2 rounded-2xl border border-slate-100 group">
+                            <ChevronLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform" />
+                        </Link>
+                        <Link href="/" className="font-black text-2xl tracking-tighter text-zinc-900">SHORAJ</Link>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        {isEnrolled ? (
+                            <Button onClick={() => setShowPlayer(true)} className="bg-zinc-900 hover:bg-zinc-800 text-white font-black rounded-2xl px-8 shadow-lg">
+                                Start Learning
+                            </Button>
+                        ) : (
+                            <Button onClick={handleEnroll} className="bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-2xl px-8 shadow-lg shadow-primary/20">
+                                Enroll Now
+                            </Button>
+                        )}
+                    </div>
+                </header>
+                <CourseLandingView
+                    course={course}
+                    onStartLearning={() => setShowPlayer(true)}
+                    handleEnroll={handleEnroll}
+                    isEnrolled={isEnrolled}
+                />
+                <EnrollmentModal
+                    isOpen={isEnrollmentModalOpen}
+                    onClose={() => setIsEnrollmentModalOpen(false)}
+                    onSuccess={() => setIsEnrolled(true)}
+                    course={course}
+                />
+            </>
+        );
+    }
+
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden font-sans">
             {/* Top Bar */}
             <header className="h-14 bg-zinc-900 border-b border-zinc-800 text-white flex items-center justify-between px-4 shrink-0 z-20 shadow-md">
                 <div className="flex items-center gap-4 overflow-hidden">
+                    <button onClick={() => setShowPlayer(false)} className="text-zinc-400 hover:text-white transition-colors">
+                        <ChevronLeft className="h-6 w-6" />
+                    </button>
                     <Link href="/" className="font-bold text-lg hover:text-zinc-300 transition-colors">SHORAJ</Link>
                     <Separator orientation="vertical" className="h-6 bg-zinc-700" />
                     <h1 className="font-medium truncate hidden sm:block text-zinc-300 max-w-xl">{course.title}</h1>
@@ -269,9 +589,9 @@ export default function CoursePlayerPage() {
                             </Link>
                         </Button>
                     )}
-                    <Link href="/dashboard" className="hidden md:flex items-center gap-2 mr-4 text-sm text-zinc-400 hover:text-white transition-colors">
-                        Exit Course
-                    </Link>
+                    <button onClick={() => setShowPlayer(false)} className="hidden md:flex items-center gap-2 mr-4 text-sm text-zinc-400 hover:text-white transition-colors border-none bg-transparent cursor-pointer">
+                        Exit Player
+                    </button>
                     <Button variant="ghost" size="icon" className="md:hidden text-white" onClick={() => setSidebarOpen(true)}>
                         <Menu className="h-5 w-5" />
                     </Button>
