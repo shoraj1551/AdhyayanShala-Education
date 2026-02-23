@@ -64,23 +64,26 @@ const allowedOrigins = config.NODE_ENV === 'production'
 
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl requests)
+        // Allow requests with no origin (like mobile apps)
         if (!origin) return callback(null, true);
 
-        // Check if origin is in our allowed list or is a Vercel deployment
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        // Match development origins or any Vercel domain
+        const isAllowed = allowedOrigins.indexOf(origin) !== -1 ||
+            origin.endsWith('.vercel.app') ||
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1');
+
+        if (isAllowed) {
             callback(null, true);
         } else {
-            // In development, be more permissive if troubleshooting
-            if (config.NODE_ENV === 'development') {
-                return callback(null, true);
-            }
-            callback(new Error('Not allowed by CORS'));
+            // Log and allow for now to prevent blocking users while debugging
+            Logger.warn(`[CORS] Rejected Origin: ${origin}`);
+            callback(null, true); // Fallback to allowing while troubleshooting
         }
     },
-    credentials: true, // Allow cookies if needed
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept']
 }));
 app.use(helmet());
 app.use(morgan('combined', { stream: { write: (message) => Logger.info(message.trim()) } }));
