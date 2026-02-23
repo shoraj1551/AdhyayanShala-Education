@@ -54,6 +54,7 @@ import { apiLimiter, authLimiter, paymentLimiter, uploadLimiter } from './middle
 import { errorHandler } from './middleware/errorHandler';
 
 // Middleware
+app.set("trust proxy", 1);
 app.use(express.json());
 
 // CORS Configuration - Environment-based origins
