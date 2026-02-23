@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import { config } from './config/env.config';
+import prisma from './lib/prisma';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -109,6 +110,26 @@ app.use((req, res, next) => {
 
 // Static Files
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
+// Health check with DB verification
+app.get('/api/health', async (req: Request, res: Response) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({
+            status: 'ok',
+            database: 'connected',
+            timestamp: new Date().toISOString(),
+            env: config.NODE_ENV
+        });
+    } catch (error: any) {
+        Logger.error('[HEALTH CHECK] Failed:', error);
+        res.status(500).json({
+            status: 'error',
+            database: 'disconnected',
+            message: error.message
+        });
+    }
+});
 
 // Base Route
 app.get('/', (req: Request, res: Response) => {
