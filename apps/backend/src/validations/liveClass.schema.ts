@@ -5,6 +5,7 @@ export const liveSettingsSchema = z.object({
     meetingLink: z.string().url().optional().or(z.string().length(0)),
     scheduleNote: z.string().optional(),
     difficulty: z.string().optional(),
+    moderatorEmails: z.array(z.string().email()).optional().or(z.array(z.string()).length(0)),
 });
 
 export const scheduleSchema = z.object({

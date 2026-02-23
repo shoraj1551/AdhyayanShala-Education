@@ -108,7 +108,7 @@ export function JoinLiveClass({
 
             {isEnrolled && (
                 <p className="text-xs text-muted-foreground text-center">
-                    You&apos;re joining as <strong>{(user as { name?: string })?.name || "Student"}</strong> — your registered identity
+                    You&apos;re joining as <strong>{(user as { name?: string })?.name || "Student"}</strong> — you have been automatically authenticated.
                 </p>
             )}
         </div>

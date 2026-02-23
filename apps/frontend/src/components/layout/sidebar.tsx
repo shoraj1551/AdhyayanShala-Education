@@ -19,11 +19,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-const commonItems = [
+export const commonItems = [
     { title: "Settings", href: "/settings", icon: Settings },
 ];
 
-const studentItems = [
+export const studentItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { title: "Browse Courses", href: "/courses", icon: Library },
     { title: "My Learning", href: "/my-learning", icon: GraduationCap },
@@ -32,7 +32,7 @@ const studentItems = [
     ...commonItems
 ];
 
-const instructorItems = [
+export const instructorItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { title: "My Courses", href: "/instructor/courses", icon: BookOpen },
     { title: "Create Course", href: "/instructor/create", icon: Plus },
@@ -42,7 +42,7 @@ const instructorItems = [
     ...commonItems
 ];
 
-const adminItems = [
+export const adminItems = [
     { title: "Admin Overview", href: "/dashboard", icon: LayoutDashboard },
     { title: "Site Content", href: "/admin/content", icon: Globe },
     { title: "Analytics", href: "/admin/analytics", icon: TrendingUp },
@@ -53,18 +53,18 @@ const adminItems = [
     { title: "Platform Settings", href: "/admin/settings", icon: Settings },
 ];
 
+export const getNavItems = (user: any) => {
+    if (!user) return [{ title: "Browse Courses", href: "/courses", icon: Library }];
+    if (user.role === 'INSTRUCTOR') return instructorItems;
+    if (user.role === 'ADMIN') return adminItems;
+    return studentItems;
+};
+
 export function Sidebar() {
     const pathname = usePathname();
     const { logout, user } = useAuth();
 
-    let items = studentItems; // default
-    if (!user) {
-        items = [{ title: "Browse Courses", href: "/courses", icon: Library }];
-    } else if (user.role === 'INSTRUCTOR') {
-        items = instructorItems;
-    } else if (user.role === 'ADMIN') {
-        items = adminItems;
-    }
+    const items = getNavItems(user);
 
     return (
         <div className="flex h-full min-h-screen w-64 flex-col border-r bg-card text-card-foreground">

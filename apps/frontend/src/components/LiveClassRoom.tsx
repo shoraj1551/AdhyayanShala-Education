@@ -81,8 +81,8 @@ export function LiveClassRoom({
                         mobileAppProto: 'shoraj-app', // Placeholder
                         disableInviteFunctions: true,
                         remoteVideoMenu: {
-                            disableKick: !isInstructor,
-                            disableMute: !isInstructor,
+                            disableKick: false, // Jitsi handles this via JWT claims
+                            disableMute: false,
                         },
                     },
                     interfaceConfigOverwrite: {

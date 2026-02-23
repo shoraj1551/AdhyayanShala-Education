@@ -9,20 +9,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-
-const sidebarItems = [
-    { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { title: "Browse Courses", href: "/courses", icon: Library },
-    { title: "My Learning", href: "/my-learning", icon: GraduationCap },
-    { title: "Settings", href: "/settings", icon: Settings },
-    { title: "History", href: "/history", icon: History },
-    { title: "Admin (Tests)", href: "/admin/tests", icon: Settings },
-    { title: "Create Course", href: "/instructor/create", icon: BookOpen },
-];
-
+import { getNavItems } from "./sidebar";
 import { NotificationBell } from "@/components/NotificationBell";
 
-// Removed inline NotificationList in favor of component
+// Redundant sidebarItems removed in favor of getNavItems
 
 
 export function Topbar() {
@@ -46,10 +36,7 @@ export function Topbar() {
                                 <img src="/logo.png" alt="AdhyayanShala" className="h-8 w-8 object-contain" />
                                 <span>AdhyayanShala</span>
                             </div>
-                            {sidebarItems.map((item, index) => {
-                                if (item.title === "Create Course" && user?.role === 'STUDENT') return null;
-                                if (item.title.startsWith("Admin") && user?.role !== 'ADMIN') return null;
-
+                            {getNavItems(user).map((item, index) => {
                                 const Icon = item.icon;
                                 const isActive = pathname === item.href;
                                 return (

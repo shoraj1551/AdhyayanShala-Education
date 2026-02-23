@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowRight, Brain, Trophy, Users, Globe, Zap, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Brain, Trophy, Users, Globe, Zap, CheckCircle2, Menu } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { getSocials } from "@/lib/api";
 import React, { useRef, useState } from "react";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewsTicker } from "@/components/NewsTicker";
 import { WaitlistForm } from "@/components/waitlist-form";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 // Helper to render icon dynamically
 const DynamicIcon = ({ name, className }: { name: string, className?: string }) => {
@@ -86,29 +87,82 @@ export default function LandingPage() {
         <NewsTicker />
       </div>
       {/* Navbar (Simplified for Landing) */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md">
-        <div className="flex items-center gap-2 font-bold text-xl text-primary">
+      <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-background/80 px-4 md:px-6 backdrop-blur-md">
+        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
           <img src="/logo.png" alt="AdhyayanShala" className="h-8 w-8 object-contain" />
           <span>AdhyayanShala</span>
-        </div>
-        <div className="flex items-center gap-4">
+        </Link>
+        <div className="flex items-center gap-2 md:gap-4">
+          <nav className="hidden md:flex items-center gap-6 mr-4 text-sm font-medium">
+            <Link href="/explore" className="hover:text-primary transition-colors">Courses</Link>
+            <Link href="/about" className="hover:text-primary transition-colors">About</Link>
+            <Link href="/contact" className="hover:text-primary transition-colors">Contact</Link>
+          </nav>
           {isLoading ? (
             <div className="w-24 h-9 bg-muted animate-pulse rounded-md" />
           ) : user ? (
-            <div className="flex items-center gap-4">
-              <Link href="/explore">
-                <Button variant="outline">Browse Courses</Button>
+            <div className="flex items-center gap-2 md:gap-4">
+              <Link href="/dashboard" className="hidden sm:block">
+                <Button variant="outline" size="sm">Dashboard</Button>
               </Link>
-              <Button variant="ghost" onClick={() => logout(false)}>Log Out</Button>
+              <Button variant="ghost" size="sm" onClick={() => logout(false)}>Log Out</Button>
             </div>
           ) : (
-            <>
-              <Button variant="ghost" onClick={() => setIsAuthModalOpen(true)}>Sign In</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => setIsAuthModalOpen(true)}>Sign In</Button>
               <Link href="/explore">
-                <Button>Get Started</Button>
+                <Button size="sm">Get Started</Button>
               </Link>
-            </>
+            </div>
           )}
+
+          {/* Mobile Menu */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <nav className="flex flex-col gap-4 mt-8">
+                <div className="flex items-center gap-2 font-bold text-xl text-primary px-2 mb-4">
+                  <img src="/logo.png" alt="AdhyayanShala" className="h-8 w-8 object-contain" />
+                  <span>AdhyayanShala</span>
+                </div>
+                <Link href="/explore" className="flex items-center gap-3 rounded-lg px-3 py-2 text-lg font-medium hover:bg-accent">
+                  Browse Courses
+                </Link>
+                <Link href="/about" className="flex items-center gap-3 rounded-lg px-3 py-2 text-lg font-medium hover:bg-accent">
+                  About Us
+                </Link>
+                <Link href="/contact" className="flex items-center gap-3 rounded-lg px-3 py-2 text-lg font-medium hover:bg-accent">
+                  Contact
+                </Link>
+                <Link href="/instructor/register" className="flex items-center gap-3 rounded-lg px-3 py-2 text-lg font-medium hover:bg-accent">
+                  Become an Instructor
+                </Link>
+                <div className="border-t pt-4 mt-4">
+                  {user ? (
+                    <div className="flex flex-col gap-2">
+                      <Link href="/dashboard">
+                        <Button className="w-full justify-start" variant="ghost">Dashboard</Button>
+                      </Link>
+                      <Button className="w-full justify-start" variant="ghost" onClick={() => logout(false)}>Log Out</Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Button className="w-full justify-start" variant="ghost" onClick={() => {
+                        setIsAuthModalOpen(true);
+                      }}>Sign In</Button>
+                      <Link href="/explore">
+                        <Button className="w-full">Get Started</Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 

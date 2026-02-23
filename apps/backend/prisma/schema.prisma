@@ -180,6 +180,7 @@ model LiveClassSettings {
   scheduleNote    String? // e.g. "Mon, Wed, Fri at 8 PM IST"
   recordings      Json?   // Arary of { url, title, recordedAt }
   notes           Json?   // Array of { url, title, savedAt }
+  moderatorEmails Json?   // Array of strings (emails)
 }
 
 model ClassSchedule {

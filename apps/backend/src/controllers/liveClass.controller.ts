@@ -116,7 +116,15 @@ export const generateToken = async (req: AuthRequest, res: Response, next: NextF
         });
         if (!user) throw new NotFoundError("User");
 
-        const jitsiRole = (user.role === 'INSTRUCTOR' || user.role === 'ADMIN') ? 'MODERATOR' : user.role;
+        const settings = await prisma.liveClassSettings.findUnique({
+            where: { courseId },
+            select: { moderatorEmails: true }
+        });
+
+        const moderatorEmails = (settings?.moderatorEmails as string[]) || [];
+        const isPersistentModerator = moderatorEmails.includes(user.email);
+
+        const jitsiRole = (user.role === 'INSTRUCTOR' || user.role === 'ADMIN' || isPersistentModerator) ? 'MODERATOR' : user.role;
         const tokenData = generateJitsiToken(courseId, {
             name: user.name || (jitsiRole === 'MODERATOR' ? 'Instructor' : 'Student'),
             email: user.email,

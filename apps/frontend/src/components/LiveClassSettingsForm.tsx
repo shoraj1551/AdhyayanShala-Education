@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { Loader2, Plus, Trash2, Clock, Calendar } from "lucide-react";
+import { Loader2, Plus, Trash2, Clock, Calendar, Users, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Schedule {
@@ -20,11 +20,8 @@ interface Schedule {
     duration: number;
 }
 
-interface LiveSettings {
-    platform: string;
-    meetingLink: string;
-    scheduleNote: string;
-    difficulty: string;
+difficulty: string;
+moderatorEmails ?: string[];
 }
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -38,8 +35,10 @@ export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
         platform: 'ZOOM',
         meetingLink: '',
         scheduleNote: '',
-        difficulty: 'Beginner'
+        difficulty: 'Beginner',
+        moderatorEmails: []
     });
+    const [newModEmail, setNewModEmail] = useState("");
     const [schedules, setSchedules] = useState<Schedule[]>([]);
 
     // Visual schedule builder state
@@ -140,6 +139,25 @@ export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
         );
     };
 
+    const addModerator = () => {
+        if (!newModEmail) return;
+        if (!newModEmail.includes("@")) return toast.error("Invalid email");
+        if (settings.moderatorEmails?.includes(newModEmail)) return toast.error("Already added");
+
+        setSettings(prev => ({
+            ...prev,
+            moderatorEmails: [...(prev.moderatorEmails || []), newModEmail]
+        }));
+        setNewModEmail("");
+    };
+
+    const removeModerator = (email: string) => {
+        setSettings(prev => ({
+            ...prev,
+            moderatorEmails: prev.moderatorEmails?.filter(e => e !== email) || []
+        }));
+    };
+
     if (loading) return (
         <div className="flex justify-center p-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -198,6 +216,64 @@ export function LiveClassSettingsForm({ courseId }: { courseId: string }) {
                     <Button onClick={handleSaveSettings} disabled={saving}>
                         {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Settings"}
                     </Button>
+                </CardContent>
+            </Card>
+
+            {/* Moderator Management */}
+            <Card className="border-primary/20 bg-primary/5">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary" />
+                        Persistent Moderators
+                    </CardTitle>
+                    <CardDescription>
+                        Grant moderator rights to co-instructors or assistants. These users will automatically get control rights when joining.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="bg-white/80 rounded-lg p-4 mb-4 border border-primary/10">
+                        <h4 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4" /> Moderator Rights:
+                        </h4>
+                        <ul className="text-xs space-y-1 text-muted-foreground list-disc pl-4 font-medium">
+                            <li>Manage participants (Mute/Kick)</li>
+                            <li>Override meeting settings</li>
+                            <li>Control session recording and live-streaming</li>
+                            <li>Access to moderator-only chat/tools</li>
+                        </ul>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="Assistant's email address"
+                            value={newModEmail}
+                            onChange={(e) => setNewModEmail(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && addModerator()}
+                        />
+                        <Button variant="outline" onClick={addModerator}>
+                            <Plus className="h-4 w-4 mr-2" /> Add
+                        </Button>
+                    </div>
+
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                        {(settings.moderatorEmails || []).length > 0 ? (
+                            settings.moderatorEmails?.map(email => (
+                                <div key={email} className="flex items-center justify-between p-2 bg-white rounded-md border text-sm">
+                                    <span className="font-medium truncate">{email}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeModerator(email)}
+                                        className="text-destructive h-8 w-8 p-0"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-center py-4 text-xs text-muted-foreground italic">No persistent moderators added.</p>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 

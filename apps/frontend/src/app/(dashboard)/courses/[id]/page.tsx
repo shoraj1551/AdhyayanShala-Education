@@ -93,7 +93,7 @@ const CourseLandingView = ({
     return (
         <div className="flex flex-col min-h-screen bg-background">
             {/* Hero Section */}
-            <section className="relative bg-white pt-24 pb-32 px-4 border-b border-slate-100">
+            <section className="relative bg-white pt-16 pb-20 md:pt-24 md:pb-32 px-4 border-b border-slate-100">
                 <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-20" />
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
                     <div className="space-y-10 animate-in fade-in slide-in-from-left duration-1000">
@@ -101,31 +101,31 @@ const CourseLandingView = ({
                             <BookOpen className="h-4 w-4" />
                             <span>{course.level} Level Curriculum</span>
                         </div>
-                        <h1 className="text-6xl md:text-7xl font-black tracking-tight leading-[1.1] text-zinc-950">
+                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-[1.1] text-zinc-950">
                             {course.title}
                         </h1>
                         <p className="text-xl text-zinc-500 leading-relaxed max-w-xl font-semibold">
                             {course.description || "Transform your career with our industry-validated curriculum and personalized mentorship program."}
                         </p>
 
-                        <div className="flex flex-wrap gap-5 pt-4">
+                        <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-4">
                             {isEnrolled ? (
-                                <Button size="lg" onClick={onStartLearning} className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 h-16 rounded-[1.5rem] text-xl font-black shadow-xl shadow-primary/20 group transition-all">
+                                <Button size="lg" onClick={onStartLearning} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 md:px-12 h-14 md:h-16 rounded-2xl md:rounded-[1.5rem] text-lg md:text-xl font-black shadow-xl shadow-primary/20 group transition-all">
                                     Continue Learning
-                                    <PlayCircle className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
+                                    <PlayCircle className="ml-3 h-5 w-5 md:h-6 md:w-6 group-hover:translate-x-2 transition-transform" />
                                 </Button>
                             ) : (
                                 <>
-                                    <Button size="lg" onClick={handleEnroll} className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 h-16 rounded-[1.5rem] text-xl font-black shadow-xl shadow-primary/20 transition-all">
+                                    <Button size="lg" onClick={handleEnroll} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 md:px-12 h-14 md:h-16 rounded-2xl md:rounded-[1.5rem] text-lg md:text-xl font-black shadow-xl shadow-primary/20 transition-all">
                                         Enroll Now - ₹{(course.discountedPrice || course.price).toLocaleString()}
                                     </Button>
-                                    <Button size="lg" variant="outline" onClick={onStartLearning} className="border-slate-200 bg-white hover:bg-slate-50 text-zinc-950 px-10 h-16 rounded-[1.5rem] text-xl font-black shadow-sm transition-all">
+                                    <Button size="lg" variant="outline" onClick={onStartLearning} className="border-slate-200 bg-white hover:bg-slate-50 text-zinc-950 px-8 md:px-10 h-14 md:h-16 rounded-2xl md:rounded-[1.5rem] text-lg md:text-xl font-black shadow-sm transition-all">
                                         Free Preview
                                     </Button>
                                     {course.brochureUrl && (
-                                        <Button size="lg" variant="ghost" asChild className="text-primary hover:bg-primary/5 px-10 h-16 rounded-[1.5rem] text-xl font-black transition-all">
+                                        <Button size="lg" variant="ghost" asChild className="text-primary hover:bg-primary/5 px-8 md:px-10 h-14 md:h-16 rounded-2xl md:rounded-[1.5rem] text-lg md:text-xl font-black transition-all">
                                             <a href={course.brochureUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                                                <Download className="h-6 w-6" />
+                                                <Download className="h-5 w-5 md:h-6 md:w-6" />
                                                 Brochure
                                             </a>
                                         </Button>
@@ -174,14 +174,14 @@ const CourseLandingView = ({
             </section>
 
             {/* Content Section */}
-            <main className="max-w-7xl mx-auto px-4 py-24 grid lg:grid-cols-3 gap-20">
+            <main className="max-w-7xl mx-auto px-4 py-12 md:py-24 grid lg:grid-cols-3 gap-12 lg:gap-20">
                 <div className="lg:col-span-2 space-y-20">
                     {/* Course Overview */}
                     <section className="space-y-10">
                         <div className="flex items-end justify-between">
                             <div className="space-y-4">
-                                <h2 className="text-5xl font-black tracking-tight flex items-center gap-4">
-                                    <BookOpen className="h-10 w-10 text-primary" />
+                                <h2 className="text-3xl md:text-5xl font-black tracking-tight flex items-center gap-4">
+                                    <BookOpen className="h-8 w-8 md:h-10 md:w-10 text-primary" />
                                     Curriculum
                                 </h2>
                                 <p className="text-zinc-500 font-bold text-lg">Master the skills with our comprehensive step-by-step program.</p>
@@ -201,10 +201,10 @@ const CourseLandingView = ({
                                 <div key={module.id} className="border border-muted rounded-[2.5rem] overflow-hidden bg-muted/20 hover:bg-muted/30 transition-all duration-500 group">
                                     <div className="px-10 py-8 flex justify-between items-center bg-background/50 border-b border-muted">
                                         <div className="flex items-center gap-6">
-                                            <span className="w-12 h-12 bg-white text-zinc-950 border border-slate-200 rounded-2xl flex items-center justify-center font-black shadow-sm group-hover:shadow-md transition-all">
+                                            <span className="w-10 h-10 md:w-12 md:h-12 bg-white text-zinc-950 border border-slate-200 rounded-xl md:rounded-2xl flex items-center justify-center font-black shadow-sm group-hover:shadow-md transition-all">
                                                 {String(mIdx + 1).padStart(2, '0')}
                                             </span>
-                                            <h3 className="text-2xl font-black tracking-tight">{module.title}</h3>
+                                            <h3 className="text-xl md:text-2xl font-black tracking-tight">{module.title}</h3>
                                         </div>
                                         {mIdx < 2 && (
                                             <span className="bg-green-500/10 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border border-green-500/20">
@@ -219,7 +219,7 @@ const CourseLandingView = ({
                                                     <div className="p-3 bg-muted rounded-2xl group-hover/lesson:bg-primary/10 group-hover/lesson:text-primary transition-colors">
                                                         {lesson.type === 'VIDEO' ? <PlayCircle className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
                                                     </div>
-                                                    <span className="font-bold text-lg text-zinc-600 group-hover/lesson:text-zinc-900 transition-colors">{lesson.title}</span>
+                                                    <span className="font-bold text-base md:text-lg text-zinc-600 group-hover/lesson:text-zinc-900 transition-colors">{lesson.title}</span>
                                                 </div>
                                                 <div className="flex items-center gap-4">
                                                     <span className="text-xs font-black text-muted-foreground tabular-nums">{lesson.duration}m</span>
