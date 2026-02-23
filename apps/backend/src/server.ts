@@ -54,6 +54,7 @@ import { apiLimiter, authLimiter, paymentLimiter, uploadLimiter } from './middle
 import { errorHandler } from './middleware/errorHandler';
 
 // Middleware
+app.set("trust proxy", 1);
 app.use(express.json());
 
 // CORS Configuration - Environment-based origins
@@ -62,7 +63,21 @@ const allowedOrigins = config.NODE_ENV === 'production'
     : [config.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://localhost:3005', 'http://127.0.0.1:3005'];
 
 app.use(cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // Check if origin is in our allowed list or is a Vercel deployment
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+            callback(null, true);
+        } else {
+            // In development, be more permissive if troubleshooting
+            if (config.NODE_ENV === 'development') {
+                return callback(null, true);
+            }
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true, // Allow cookies if needed
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
