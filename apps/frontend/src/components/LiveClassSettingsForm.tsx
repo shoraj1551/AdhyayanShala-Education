@@ -20,8 +20,12 @@ interface Schedule {
     duration: number;
 }
 
-difficulty: string;
-moderatorEmails ?: string[];
+interface LiveSettings {
+    platform: string;
+    meetingLink: string;
+    scheduleNote: string;
+    difficulty: string;
+    moderatorEmails?: string[];
 }
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
