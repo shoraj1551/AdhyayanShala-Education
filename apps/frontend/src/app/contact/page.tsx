@@ -132,10 +132,10 @@ export default function ContactPage() {
 
                                 const formData = new FormData(form);
                                 const data = {
-                                    name: formData.get('name'),
-                                    email: formData.get('email'),
-                                    subject: formData.get('subject'),
-                                    message: formData.get('message'),
+                                    name: formData.get('name') as string,
+                                    email: formData.get('email') as string,
+                                    subject: formData.get('subject') as string,
+                                    message: formData.get('message') as string,
                                 };
 
                                 try {
