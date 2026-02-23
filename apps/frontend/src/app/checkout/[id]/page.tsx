@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, QrCode, Building2, Upload, WhatsappIcon, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, QrCode, Building2, Upload, MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 
@@ -151,7 +151,7 @@ export default function CheckoutPage() {
                             className="w-full gap-2 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-400"
                             onClick={() => window.open(`https://wa.me/919999999999?text=Hi, I want to pay for ${course.title}`, "_blank")}
                         >
-                            <Building2 className="h-4 w-4" /> Need Help? WhatsApp Support
+                            <MessageSquare className="h-4 w-4" /> Need Help? WhatsApp Support
                         </Button>
                     </div>
 
