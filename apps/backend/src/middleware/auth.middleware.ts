@@ -5,12 +5,12 @@ import { config } from '../config/env.config';
 
 const JWT_SECRET = config.JWT_SECRET;
 
-export interface AuthRequest extends Request {
+export type AuthRequest = Request & {
     user?: {
         id: string;
         role: string;
     };
-}
+};
 
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
     const authHeader = req.headers['authorization'];
