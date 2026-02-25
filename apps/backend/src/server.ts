@@ -55,19 +55,29 @@ import { apiLimiter, authLimiter, paymentLimiter, uploadLimiter } from './middle
 import { errorHandler } from './middleware/errorHandler';
 
 // Middleware
-// Middleware
 app.set("trust proxy", 1);
 
-// CORS Configuration - Permissive for Vercel troubleshooting
-app.use(cors({
-    origin: true, // Reflects the request origin
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept']
-}));
+// Manual CORS handler to ensure headers are ALWAYS present
+app.use((req, res, next) => {
+    const origin = req.get('origin');
+    if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else {
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Origin, Accept, X-Requested-With');
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
 
 app.use(express.json());
-app.use(helmet());
+// app.use(helmet()); // Temporarily disabled for CORS troubleshooting
 app.use(morgan('combined', { stream: { write: (message) => Logger.info(message.trim()) } }));
 
 // Compression middleware - reduces response size by 60-80%
