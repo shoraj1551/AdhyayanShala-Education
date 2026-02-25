@@ -2,6 +2,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ||
     (process.env.NODE_ENV === 'development' ? 'http://localhost:3001/api' : '/api');
 
+console.log("[DEBUG] API_URL being used:", API_URL);
+
 export interface TeamMemberDTO {
     name: string;
     role: string;
