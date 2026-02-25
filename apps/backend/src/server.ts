@@ -55,37 +55,18 @@ import { apiLimiter, authLimiter, paymentLimiter, uploadLimiter } from './middle
 import { errorHandler } from './middleware/errorHandler';
 
 // Middleware
+// Middleware
 app.set("trust proxy", 1);
-app.use(express.json());
 
-// CORS Configuration - Environment-based origins
-const allowedOrigins = config.NODE_ENV === 'production'
-    ? [config.FRONTEND_URL]
-    : [config.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://localhost:3005', 'http://127.0.0.1:3005'];
-
+// CORS Configuration - Permissive for Vercel troubleshooting
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps)
-        if (!origin) return callback(null, true);
-
-        // Match development origins or any Vercel domain
-        const isAllowed = allowedOrigins.indexOf(origin) !== -1 ||
-            origin.endsWith('.vercel.app') ||
-            origin.includes('localhost') ||
-            origin.includes('127.0.0.1');
-
-        if (isAllowed) {
-            callback(null, true);
-        } else {
-            // Log and allow for now to prevent blocking users while debugging
-            Logger.warn(`[CORS] Rejected Origin: ${origin}`);
-            callback(null, true); // Fallback to allowing while troubleshooting
-        }
-    },
+    origin: true, // Reflects the request origin
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept']
 }));
+
+app.use(express.json());
 app.use(helmet());
 app.use(morgan('combined', { stream: { write: (message) => Logger.info(message.trim()) } }));
 
