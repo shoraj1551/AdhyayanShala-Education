@@ -16,6 +16,7 @@ const envSchema = z.object({
 
     // Database
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+    DIRECT_URL: z.string().optional(),
 
     // External Services
     RAZORPAY_KEY_ID: z.string().optional().refine(
