@@ -8,18 +8,11 @@ ADD COLUMN "isFree" BOOLEAN NOT NULL DEFAULT false,
     ADD COLUMN "promoVideoUrl" TEXT,
     ADD COLUMN "brochureUrl" TEXT,
     ADD COLUMN "currency" TEXT NOT NULL DEFAULT 'INR';
--- CreateTable
-CREATE TABLE "LiveClassSettings" (
-    "id" TEXT NOT NULL,
-    "courseId" TEXT NOT NULL,
-    "platform" TEXT NOT NULL DEFAULT 'ZOOM',
-    "meetingLink" TEXT,
-    "scheduleNote" TEXT,
-    "recordings" JSONB,
-    "notes" JSONB,
-    "moderatorEmails" JSONB,
-    CONSTRAINT "LiveClassSettings_pkey" PRIMARY KEY ("id")
-);
+-- AlterTable
+ALTER TABLE "LiveClassSettings"
+ADD COLUMN "recordings" JSONB,
+    ADD COLUMN "notes" JSONB,
+    ADD COLUMN "moderatorEmails" JSONB;
 -- CreateTable
 CREATE TABLE "MentorshipSlot" (
     "id" TEXT NOT NULL,
@@ -49,27 +42,22 @@ CREATE TABLE "MentorshipBooking" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "MentorshipBooking_pkey" PRIMARY KEY ("id")
 );
--- Add missing fields to Test
+-- AlterTable
 ALTER TABLE "Test"
 ADD COLUMN "instructions" TEXT,
     ADD COLUMN "totalMarks" INTEGER NOT NULL DEFAULT 0,
     ADD COLUMN "passMarks" INTEGER,
     ADD COLUMN "isPublished" BOOLEAN NOT NULL DEFAULT false,
     ADD COLUMN "availableAt" TIMESTAMP(3);
--- Add missing fields to Question
+-- AlterTable
 ALTER TABLE "Question"
 ADD COLUMN "negativeMarks" DOUBLE PRECISION NOT NULL DEFAULT 0,
     ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0;
--- Add missing fields to Attempt
+-- AlterTable
 ALTER TABLE "Attempt"
 ADD COLUMN "responses" JSONB,
     ADD COLUMN "status" TEXT NOT NULL DEFAULT 'IN_PROGRESS',
     ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
--- CreateIndex
-CREATE UNIQUE INDEX "LiveClassSettings_courseId_key" ON "LiveClassSettings"("courseId");
--- AddForeignKey
-ALTER TABLE "LiveClassSettings"
-ADD CONSTRAINT "LiveClassSettings_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "Course"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 -- AddForeignKey
 ALTER TABLE "MentorshipSlot"
 ADD CONSTRAINT "MentorshipSlot_instructorId_fkey" FOREIGN KEY ("instructorId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
