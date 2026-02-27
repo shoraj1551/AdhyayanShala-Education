@@ -329,12 +329,12 @@ function RegisterForm() {
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
-                                    placeholder="Min 6 characters"
+                                    placeholder="Min 8 chars, Aa1@ (Upper, Lower, Num, Special)"
                                     value={formData.password}
                                     onChange={(e) => handleChange("password", e.target.value)}
                                     required
-                                    minLength={6}
-                                    className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary pr-10"
+                                    minLength={8}
+                                    className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-400 focus-visible:ring-primary pr-10"
                                 />
                                 <Button
                                     type="button"
@@ -351,6 +351,7 @@ function RegisterForm() {
                                     <span className="sr-only">Toggle password visibility</span>
                                 </Button>
                             </div>
+                            <p className="text-[10px] text-zinc-500">Must include uppercase, lowercase, number, and special character.</p>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="confirmPassword" className="text-zinc-300">Confirm Password</Label>
@@ -362,7 +363,7 @@ function RegisterForm() {
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     required
-                                    minLength={6}
+                                    minLength={8}
                                     className="bg-zinc-950/50 border-white/10 text-white placeholder:text-zinc-500 focus-visible:ring-primary pr-10"
                                 />
                                 <Button

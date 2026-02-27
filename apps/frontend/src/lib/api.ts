@@ -63,7 +63,7 @@ export const api = {
             console.error(`API GET Error: ${API_URL}${url}`, error);
             // Enhance the error message for better user visibility
             if (error instanceof TypeError && error.message === "Failed to fetch") {
-                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running.`);
+                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running. If this is a production URL, check for CORS issues or Vercel Deployment Protection.`);
             }
             throw error;
         }
@@ -86,7 +86,7 @@ export const api = {
         } catch (error) {
             console.error(`API POST Error: ${API_URL}${url}`, error);
             if (error instanceof TypeError && error.message === "Failed to fetch") {
-                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running.`);
+                throw new Error(`Failed to connect to backend at ${API_URL}${url}. Please ensure the server is running. If this is a production URL, check for CORS issues or Vercel Deployment Protection.`);
             }
             throw error;
         }
