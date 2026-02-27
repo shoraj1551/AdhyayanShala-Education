@@ -15,16 +15,47 @@ export const getSlots = async (req: AuthRequest, res: Response, next: NextFuncti
     }
 };
 
+export const getAvailability = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) throw new UnauthorizedError();
+
+        // Use auth service or similar to get the user's fee
+        const instructor = await MentorshipService.getInstructorByIdWithSlots(userId);
+
+        res.json({
+            fee: instructor.instructor.mentorshipFee,
+            slots: instructor.slots
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
 export const updateSlots = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.id;
         if (!userId) throw new UnauthorizedError();
         const slots = await MentorshipService.updateInstructorSlots(userId, req.body.slots);
-        res.json(slots);
+        res.json({ slots }); // Wrap in object to match frontend expectation for /availability POST
     } catch (error) {
         next(error);
     }
 };
+
+export const updateFee = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) throw new UnauthorizedError();
+        const { fee } = req.body;
+        await MentorshipService.updateMentorshipFee(userId, fee);
+        res.json({ success: true, fee });
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 export const listInstructors = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {

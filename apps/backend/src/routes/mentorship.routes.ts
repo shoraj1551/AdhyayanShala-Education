@@ -8,6 +8,10 @@ const router = Router();
 // Instructor routes
 router.get('/slots', authenticateToken, MentorshipController.getSlots);
 router.post('/slots', authenticateToken, MentorshipController.updateSlots);
+router.get('/availability', authenticateToken, MentorshipController.getAvailability);
+router.post('/availability', authenticateToken, MentorshipController.updateSlots);
+router.post('/fee', authenticateToken, MentorshipController.updateFee);
+
 
 // Student routes
 router.get('/instructors', authenticateToken, MentorshipController.listInstructors);

@@ -136,3 +136,11 @@ export const getInstructorBookings = async (instructorId: string) => {
         orderBy: { date: 'desc' }
     });
 };
+
+export const updateMentorshipFee = async (instructorId: string, fee: number) => {
+    return await prisma.user.update({
+        where: { id: instructorId },
+        data: { mentorshipFee: fee }
+    });
+};
+
