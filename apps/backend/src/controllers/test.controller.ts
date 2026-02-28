@@ -8,9 +8,8 @@ import {
     updateQuestionSchema,
     submissionSchema
 } from '../validations/test.schema';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
+import Logger from '../lib/logger';
 
 export const listTests = async (req: Request, res: Response) => {
     try {
@@ -140,7 +139,7 @@ export const startAttempt = async (req: AuthRequest, res: Response) => {
         const attempt = await TestService.startAttempt(userId, id);
         res.status(201).json(attempt);
     } catch (error) {
-        console.error(error);
+        Logger.error('[Test] Error starting attempt:', error);
         res.status(500).json({ message: 'Error starting test attempt' });
     }
 };

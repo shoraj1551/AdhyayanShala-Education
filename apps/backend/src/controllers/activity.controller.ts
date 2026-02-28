@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../lib/prisma';
+import Logger from '../lib/logger';
 
 export const getInstructorActivity = async (req: AuthRequest, res: Response) => {
     try {
@@ -72,7 +73,7 @@ export const getInstructorActivity = async (req: AuthRequest, res: Response) => 
         res.json(allActivities);
 
     } catch (error) {
-        console.error("Activity Log Error:", error);
+        Logger.error('[Activity] Activity Log Error:', error);
         res.status(500).json({ message: "Failed to fetch activity log" });
     }
 };

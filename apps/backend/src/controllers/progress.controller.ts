@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import prisma from '../lib/prisma';
+import Logger from '../lib/logger';
 
 
 
@@ -36,7 +37,7 @@ export const markLessonComplete = async (req: AuthRequest, res: Response) => {
 
         res.json(progress);
     } catch (error) {
-        console.error(error);
+        Logger.error('[Progress] Error:', error);
         res.status(500).json({ message: 'Error updating progress' });
     }
 };
@@ -56,7 +57,7 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
 
         res.json(progress);
     } catch (error) {
-        console.error(error);
+        Logger.error('[Progress] Error:', error);
         res.status(500).json({ message: 'Error fetching progress' });
     }
 }

@@ -1,5 +1,6 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import prisma from '../lib/prisma';
 import * as CourseService from './course.service';
 import * as FinanceService from './finance.service';
 
@@ -54,13 +55,13 @@ export const createOrder = async (courseId: string, plan: string, amount: number
     }
 };
 
-import prisma from '../lib/prisma'; // Added import
+// prisma imported at top of file
 
 export const calculateOrderAmount = async (courseId: string, plan: string) => {
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new Error("Course not found");
 
-    const baseRefPrice = course.discountedPrice || course.price;
+    const baseRefPrice = Number(course.discountedPrice || course.price);
     let amount = 0;
 
     if (plan === 'FULL') {
@@ -104,15 +105,15 @@ export const verifyPayment = async (
     try {
         if (razorpay && !razorpay_order_id.startsWith('order_mock_')) {
             const order: any = await razorpay.orders.fetch(razorpay_order_id);
-            amount = order.amount / 100; // convert from paise
+            amount = Number(order.amount) / 100; // convert from paise
         } else {
             // Mock or Fallback: re-calculate based on plan if available, or just use price
             // In a real app, we'd store the calculated amount in a PendingOrder table
-            amount = course?.price || 0;
+            amount = Number(course?.price) || 0;
         }
     } catch (e) {
         Logger.error('[Payment] Error fetching order amount', e);
-        amount = course?.price || 0;
+        amount = Number(course?.price) || 0;
     }
 
     // Handle Mock Payment Verification

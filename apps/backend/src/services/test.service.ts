@@ -282,7 +282,7 @@ export const getLeaderboard = async (testId: string) => {
         take: 20,
         include: {
             user: {
-                select: { name: true, avatar: true, email: true }
+                select: { name: true, avatar: true }
             }
         }
     });

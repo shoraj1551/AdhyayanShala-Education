@@ -1,7 +1,5 @@
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 export const addReview = async (courseId: string, userId: string, rating: number, comment?: string) => {
     return prisma.review.create({

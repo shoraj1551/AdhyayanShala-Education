@@ -126,8 +126,8 @@ export const sendMentorshipReminders = async (minutesBefore: number) => {
         where: {
             status: 'CONFIRMED',
             date: {
-                gte: new Date(now.setHours(0, 0, 0, 0)),
-                lte: new Date(now.setHours(23, 59, 59, 999))
+                gte: new Date(new Date(now).setHours(0, 0, 0, 0)),
+                lte: new Date(new Date(now).setHours(23, 59, 59, 999))
             }
         },
         include: {

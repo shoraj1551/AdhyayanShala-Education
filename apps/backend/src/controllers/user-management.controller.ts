@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import * as UserManagementService from '../services/user-management.service';
+import Logger from '../lib/logger';
 
 export const getUsers = async (req: AuthRequest, res: Response) => {
     try {
@@ -12,7 +13,7 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
         const result = await UserManagementService.getAllUsers(page, limit, search, role);
         res.json(result);
     } catch (error) {
-        console.error("Get Users Error:", error);
+        Logger.error('[UserMgmt] Get Users Error:', error);
         res.status(500).json({ message: "Failed to fetch users" });
     }
 };
@@ -24,7 +25,7 @@ export const getUser = async (req: AuthRequest, res: Response) => {
         if (!user) return res.status(404).json({ message: "User not found" });
         res.json(user);
     } catch (error) {
-        console.error("Get User Details Error:", error);
+        Logger.error('[UserMgmt] Get User Details Error:', error);
         res.status(500).json({ message: "Failed to fetch user details" });
     }
 };
@@ -42,7 +43,7 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
         const updatedUser = await UserManagementService.updateUserRole(id, role);
         res.json(updatedUser);
     } catch (error) {
-        console.error("Update Role Error:", error);
+        Logger.error('[UserMgmt] Update Role Error:', error);
         res.status(500).json({ message: "Failed to update role" });
     }
 };
@@ -52,7 +53,7 @@ export const createUser = async (req: AuthRequest, res: Response) => {
         const newUser = await UserManagementService.createUser({ name, email, password, role });
         res.status(201).json(newUser);
     } catch (error: any) {
-        console.error("Create User Error:", error);
+        Logger.error('[UserMgmt] Create User Error:', error);
         if (error.code === 'P2002') {
             return res.status(409).json({ message: "User with this email already exists" });
         }
@@ -67,7 +68,7 @@ export const updateUserDeletePermission = async (req: AuthRequest, res: Response
         const updatedUser = await UserManagementService.updateDeletePermission(id, canDeleteAccount);
         res.json(updatedUser);
     } catch (error) {
-        console.error("Update Delete Permission Error:", error);
+        Logger.error('[UserMgmt] Update Delete Permission Error:', error);
         res.status(500).json({ message: "Failed to update permission" });
     }
 };

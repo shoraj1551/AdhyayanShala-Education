@@ -1,5 +1,6 @@
 
 import prisma from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { NotFoundError, UnauthorizedError, BadRequestError } from '../lib/errors';
 
 export const getInstructorSlots = async (instructorId: string) => {
@@ -31,7 +32,7 @@ export const updateInstructorSlots = async (instructorId: string, slots: Array<{
 };
 
 export const getAvailableInstructors = async (expertise?: string) => {
-    const where: any = {
+    const where: Prisma.UserWhereInput = {
         role: 'INSTRUCTOR'
     };
 

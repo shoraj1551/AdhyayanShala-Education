@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import * as AdminCourseService from '../services/admin-course.service';
+import Logger from '../lib/logger';
 
 export const getCourses = async (req: AuthRequest, res: Response) => {
     try {
@@ -12,7 +13,7 @@ export const getCourses = async (req: AuthRequest, res: Response) => {
         const result = await AdminCourseService.getAllCourses(page, limit, search, status);
         res.json(result);
     } catch (error) {
-        console.error("Get Admin Courses Error:", error);
+        Logger.error('[AdminCourse] Get Courses Error:', error);
         res.status(500).json({ message: "Failed to fetch courses" });
     }
 };
@@ -26,7 +27,7 @@ export const togglePublishStatus = async (req: AuthRequest, res: Response) => {
         const updatedCourse = await AdminCourseService.updateCourseStatus(id, isPublished, userId);
         res.json(updatedCourse);
     } catch (error: any) {
-        console.error("Update Course Status Error:", error);
+        Logger.error('[AdminCourse] Update Status Error:', error);
         res.status(500).json({ message: error.message || "Failed to update course status" });
     }
 };
@@ -40,7 +41,7 @@ export const deleteCourse = async (req: AuthRequest, res: Response) => {
         await AdminCourseService.deleteCourse(id, userId);
         res.json({ message: "Course deleted successfully" });
     } catch (error: any) {
-        console.error("Delete Course Error:", error);
+        Logger.error('[AdminCourse] Delete Course Error:', error);
         res.status(500).json({ message: error.message || "Failed to delete course" });
     }
 };

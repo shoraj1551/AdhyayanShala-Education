@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import * as ReviewService from '../services/review.service';
 import { AuthRequest } from '../middleware/auth.middleware';
+import Logger from '../lib/logger';
 
 export const createReview = async (req: AuthRequest, res: Response) => {
     try {
@@ -14,7 +15,7 @@ export const createReview = async (req: AuthRequest, res: Response) => {
         const review = await ReviewService.addReview(courseId, userId, rating, comment);
         res.status(201).json(review);
     } catch (error) {
-        console.error("Create Review Error", error);
+        Logger.error('[Review] Create Review Error:', error);
         res.status(500).json({ message: 'Error adding review' });
     }
 };
@@ -26,7 +27,7 @@ export const getCourseReviews = async (req: Request, res: Response) => {
         const rating = await ReviewService.getCourseRating(courseId);
         res.json({ reviews, rating });
     } catch (error) {
-        console.error("Get Reviews Error", error);
+        Logger.error('[Review] Get Reviews Error:', error);
         res.status(500).json({ message: 'Error fetching reviews' });
     }
 };
