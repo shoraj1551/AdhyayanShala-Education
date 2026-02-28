@@ -32,4 +32,10 @@ router.get('/inquiries', AdminContentController.getInquiries);
 router.patch('/inquiries/:id', AdminContentController.updateInquiryStatus);
 router.delete('/inquiries/:id', AdminContentController.deleteInquiry);
 
+// --- Newsletter / Waitlist ---
+router.get('/subscribers', AdminContentController.getSubscribers);
+router.patch('/subscribers/:id', AdminContentController.updateSubscriberStatus);
+router.delete('/subscribers/:id', AdminContentController.deleteSubscriber);
+
+
 export default router;

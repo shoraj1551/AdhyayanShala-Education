@@ -2,8 +2,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ||
     (process.env.NODE_ENV === 'development' ? 'http://localhost:3001/api' : '/api');
 
-console.log("[DEBUG] API_URL being used:", API_URL);
-
 export interface TeamMemberDTO {
     name: string;
     role: string;
@@ -196,7 +194,46 @@ export const api = {
         });
         return handleResponse(res);
     },
+
+    // --- Admin Content API ---
+    admin: {
+        team: {
+            get: (token: string) => api.get('/admin/content/team', token),
+            create: (data: TeamMemberDTO, token: string) => api.post('/admin/content/team', data, token),
+            update: (id: string, data: Partial<TeamMemberDTO>, token: string) => api.put(`/admin/content/team/${id}`, data, token),
+            delete: (id: string, token: string) => api.delete(`/admin/content/team/${id}`, token),
+        },
+        socials: {
+            get: (token: string) => api.get('/admin/content/socials', token),
+            create: (data: SocialHandleDTO, token: string) => api.post('/admin/content/socials', data, token),
+            update: (id: string, data: Partial<SocialHandleDTO>, token: string) => api.put(`/admin/content/socials/${id}`, data, token),
+            delete: (id: string, token: string) => api.delete(`/admin/content/socials/${id}`, token),
+        },
+        contact: {
+            get: (token: string) => api.get('/admin/content/contact', token),
+            create: (data: ContactInfoDTO, token: string) => api.post('/admin/content/contact', data, token),
+            update: (id: string, data: Partial<ContactInfoDTO>, token: string) => api.put(`/admin/content/contact/${id}`, data, token),
+            delete: (id: string, token: string) => api.delete(`/admin/content/contact/${id}`, token),
+        },
+        inquiries: {
+            get: (token: string) => api.get('/admin/content/inquiries', token),
+            updateStatus: (id: string, status: string, token: string) => api.patch(`/admin/content/inquiries/${id}`, { status }, token),
+            delete: (id: string, token: string) => api.delete(`/admin/content/inquiries/${id}`, token),
+        },
+        subscribers: {
+            get: (token: string) => api.get('/admin/content/subscribers', token),
+            update: (id: string, data: { status?: string; isActive?: boolean }, token: string) => api.patch(`/admin/content/subscribers/${id}`, data, token),
+            delete: (id: string, token: string) => api.delete(`/admin/content/subscribers/${id}`, token),
+        },
+        users: {
+            updateDeletePermission: (id: string, canDelete: boolean, token: string) =>
+                api.patch(`/admin/users/${id}/delete-permission`, { canDeleteAccount: canDelete }, token),
+            updateRole: (id: string, role: string, token: string) =>
+                api.patch(`/admin/users/${id}/role`, { role }, token),
+        }
+    }
 };
+
 
 async function handleResponse(res: Response) {
     if (!res.ok) {
@@ -260,5 +297,25 @@ export const submitContactInquiry = async (data: ContactInquiryDTO) => api.post(
 export const getAdminInquiries = async (token: string) => api.get('/admin/content/inquiries', token);
 export const updateAdminInquiryStatus = async (id: string, status: string, token: string) => api.patch(`/admin/content/inquiries/${id}`, { status }, token);
 export const deleteAdminInquiry = async (id: string, token: string) => api.delete(`/admin/content/inquiries/${id}`, token);
+
+// Waitlist / Subscribers
+export const getAdminSubscribers = async (token: string) => api.get('/admin/content/subscribers', token);
+export const updateAdminSubscriber = async (id: string, data: { status?: string; isActive?: boolean }, token: string) => api.patch(`/admin/content/subscribers/${id}`, data, token);
+export const deleteAdminSubscriber = async (id: string, token: string) => api.delete(`/admin/content/subscribers/${id}`, token);
+
+// Auth / Profile
+export const changePassword = async (data: any, token: string) => api.put('/auth/password', data, token);
+export const deleteMyAccount = async (token: string) => api.delete('/auth/account', {}, token);
+
+// --- Admin User Management ---
+export const updateAdminUserDeletePermission = async (id: string, canDelete: boolean, token: string) =>
+    api.patch(`/admin/users/${id}/delete-permission`, { canDeleteAccount: canDelete }, token);
+
+export const updateAdminUserRole = async (id: string, role: string, token: string) =>
+    api.patch(`/admin/users/${id}/role`, { role }, token);
+
+
+
+
 
 export default api;

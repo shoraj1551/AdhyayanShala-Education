@@ -13,15 +13,18 @@ const registerSchema = z.object({
         .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
             'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'),
     name: z.string().optional(),
-    role: z.enum(['STUDENT', 'INSTRUCTOR', 'ADMIN']).default('STUDENT'),
+    role: z.enum(['STUDENT', 'INSTRUCTOR']).default('STUDENT'),
     // Extended fields
+
     bio: z.string().optional(),
     expertise: z.string().optional(),
     experience: z.string().optional().or(z.number().transform(String)), // Handle number input
     linkedin: z.string().optional(),
     currentStatus: z.string().optional(),
+    subStatus: z.string().optional(),
     interests: z.string().optional(),
 });
+
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -29,7 +32,16 @@ const loginSchema = z.object({
     role: z.string().optional(), // Added role
 });
 
+const changePasswordSchema = z.object({
+    currentPassword: z.string(),
+    newPassword: z.string()
+        .min(8, 'Password must be at least 8 characters long')
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+            'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'),
+});
+
 export const register = async (req: Request, res: Response) => {
+
     try {
         const validatedData = registerSchema.parse(req.body);
         const { user, token } = await AuthService.registerUser(validatedData);
@@ -116,11 +128,10 @@ export const login = async (req: Request, res: Response) => {
         });
     } catch (error: any) {
         Logger.error('[LOGIN] Error:', error);
-        // ...
-
         if (error instanceof z.ZodError) {
             return res.status(400).json({ message: 'Validation error', errors: (error as any).errors });
         }
+
         res.status(401).json({ message: error.message || 'Error logging in' });
     }
 };
@@ -189,5 +200,36 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
         res.json({ message: 'Profile updated successfully', user });
     } catch (error) {
         res.status(500).json({ message: 'Error updating profile' });
+    }
+};
+
+export const changePassword = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+        await AuthService.updatePassword(userId, currentPassword, newPassword);
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error: any) {
+        Logger.error('[CHANGE PASSWORD] Error:', error);
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ message: 'Validation error', errors: error.errors });
+        }
+        res.status(400).json({ message: error.message || 'Error updating password' });
+    }
+};
+
+export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        await AuthService.deleteUserAccount(userId);
+        res.json({ message: 'Account deleted successfully' });
+    } catch (error: any) {
+        Logger.error('[DELETE ACCOUNT] Error:', error);
+        res.status(403).json({ message: error.message || 'Error deleting account' });
     }
 };

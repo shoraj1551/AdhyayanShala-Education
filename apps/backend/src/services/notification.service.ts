@@ -168,3 +168,56 @@ export const sendMentorshipReminders = async (minutesBefore: number) => {
     }
     return { sent: count };
 };
+
+export const sendTestAvailableNotifications = async () => {
+    Logger.info(`[NotificationJob] Checking for newly available tests`);
+
+    const now = new Date();
+    // Look for tests that became available in the last 6 minutes (job runs every 5)
+    const windowStart = new Date(now.getTime() - 6 * 60 * 1000);
+
+    const tests = await prisma.test.findMany({
+        where: {
+            availableAt: {
+                gte: windowStart,
+                lte: now
+            },
+            isPublished: true
+        },
+        include: {
+            course: {
+                select: {
+                    title: true,
+                    enrollments: {
+                        include: { user: true }
+                    }
+                }
+            }
+        }
+    });
+
+    let count = 0;
+    for (const test of tests) {
+        const message = `New Test Available: "${test.title}" is now active in ${test.course.title}!`;
+
+        for (const enrollment of test.course.enrollments) {
+            // In-App Notification
+            await prisma.notification.create({
+                data: {
+                    userId: enrollment.userId,
+                    title: "Test Released",
+                    message,
+                    link: `/courses/${test.courseId}` // Link to course where test is
+                }
+            });
+
+            // Mock Email
+            if (enrollment.user.email) {
+                Logger.info(`[Email] Sending to Student ${enrollment.user.email}: ${message}`);
+            }
+            count++;
+        }
+    }
+
+    return { sent: count };
+};

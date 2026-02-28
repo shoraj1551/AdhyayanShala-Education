@@ -1,7 +1,10 @@
 import prisma from '../lib/prisma';
 import { Prisma, Role } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 export const getAllUsers = async (page: number = 1, limit: number = 20, search?: string, role?: string) => {
+    // ... existing code ...
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = {};
@@ -28,12 +31,14 @@ export const getAllUsers = async (page: number = 1, limit: number = 20, search?:
                 email: true,
                 role: true,
                 createdAt: true,
+                canDeleteAccount: true,
                 _count: {
                     select: {
                         enrollments: true,
                         courses: true
                     }
                 }
+
             },
             orderBy: { createdAt: 'desc' }
         }),
@@ -53,6 +58,9 @@ export const getUserDetails = async (userId: string) => {
     return prisma.user.findUnique({
         where: { id: userId },
         include: {
+            instructorProfile: true,
+            studentProfile: true,
+            wallet: true,
             enrollments: {
                 include: {
                     course: {
@@ -78,10 +86,10 @@ export const getUserDetails = async (userId: string) => {
                 orderBy: { createdAt: 'desc' },
                 take: 10
             }
-            // In future: orders/invoices
         }
     });
 };
+
 
 export const updateUserRole = async (userId: string, role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN') => {
     return prisma.user.update({
@@ -90,5 +98,30 @@ export const updateUserRole = async (userId: string, role: 'STUDENT' | 'INSTRUCT
     });
 };
 
-// Assuming we add a 'banned' or 'status' field later. For now, we can maybe scramble password or add a field if schema supports.
-// Checking schema first would be good, but for now let's stick to role management and view.
+export const createUser = async (data: {
+    name: string;
+    email: string;
+    password: string;
+    role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
+}) => {
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    return prisma.user.create({
+        data: {
+            ...data,
+            password: hashedPassword,
+            wallet: { create: {} },
+            instructorProfile: data.role === 'INSTRUCTOR' ? { create: {} } : undefined,
+            studentProfile: data.role === 'STUDENT' ? { create: {} } : undefined
+        }
+    });
+};
+
+
+
+export const updateDeletePermission = async (userId: string, canDeleteAccount: boolean) => {
+    return prisma.user.update({
+        where: { id: userId },
+        data: { canDeleteAccount }
+    });
+};
+

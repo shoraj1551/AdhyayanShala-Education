@@ -36,18 +36,15 @@ export const getAvailableInstructors = async (expertise?: string) => {
     };
 
     if (expertise) {
-        where.expertise = { contains: expertise, mode: 'insensitive' };
+        where.instructorProfile = {
+            expertise: { contains: expertise, mode: 'insensitive' }
+        };
     }
 
     return await prisma.user.findMany({
         where,
-        select: {
-            id: true,
-            name: true,
-            avatar: true,
-            expertise: true,
-            bio: true,
-            mentorshipFee: true,
+        include: {
+            instructorProfile: true,
             mentorshipSlots: {
                 where: { isActive: true }
             }
@@ -55,21 +52,19 @@ export const getAvailableInstructors = async (expertise?: string) => {
     });
 };
 
+
+
 export const getInstructorByIdWithSlots = async (instructorId: string) => {
     const instructor = await prisma.user.findUnique({
         where: { id: instructorId },
-        select: {
-            id: true,
-            name: true,
-            avatar: true,
-            expertise: true,
-            bio: true,
-            mentorshipFee: true,
+        include: {
+            instructorProfile: true,
             mentorshipSlots: {
                 where: { isActive: true }
             }
         }
     });
+
 
     if (!instructor) throw new NotFoundError("Instructor");
 
@@ -118,9 +113,10 @@ export const getStudentBookings = async (studentId: string) => {
         where: { studentId },
         include: {
             instructor: {
-                select: { name: true, avatar: true, expertise: true }
+                include: { instructorProfile: true }
             }
         },
+
         orderBy: { date: 'desc' }
     });
 };
@@ -138,9 +134,10 @@ export const getInstructorBookings = async (instructorId: string) => {
 };
 
 export const updateMentorshipFee = async (instructorId: string, fee: number) => {
-    return await prisma.user.update({
-        where: { id: instructorId },
+    return await prisma.instructorProfile.update({
+        where: { userId: instructorId },
         data: { mentorshipFee: fee }
     });
 };
+
 

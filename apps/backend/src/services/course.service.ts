@@ -71,8 +71,9 @@ export const getCourseById = async (courseId: string) => {
         where: { id: courseId },
         include: {
             instructor: {
-                select: { name: true, id: true, email: true, avatar: true, bio: true }
+                include: { instructorProfile: true }
             },
+
             modules: {
                 orderBy: { order: 'asc' },
                 include: {
@@ -164,10 +165,11 @@ export const listInstructorCourses = async (instructorId: string) => {
 };
 
 export const getInstructorStats = async (instructorId: string) => {
-    const user = await prisma.user.findUnique({
-        where: { id: instructorId },
-        select: { totalEarnings: true, walletBalance: true }
+    const userWallet = await prisma.wallet.findUnique({
+        where: { userId: instructorId },
+        select: { totalEarnings: true, balance: true }
     });
+
 
     const courses = await prisma.course.findMany({
         where: { instructorId },
@@ -181,7 +183,8 @@ export const getInstructorStats = async (instructorId: string) => {
     const totalCourses = courses.length;
     const publishedCourses = courses.filter(c => c.isPublished).length;
     const totalEnrollments = courses.reduce((sum, course) => sum + course._count.enrollments, 0);
-    const totalRevenue = user?.totalEarnings || 0;
+    const totalRevenue = userWallet?.totalEarnings || 0;
+
 
     const coursesWithStats = courses.map(course => ({
         id: course.id,
@@ -202,10 +205,13 @@ export const getInstructorStats = async (instructorId: string) => {
 };
 
 export const getInstructorDashboardData = async (instructorId: string) => {
-    const user = await prisma.user.findUnique({
-        where: { id: instructorId },
-        select: { totalEarnings: true, walletBalance: true }
+    const userWallet = await prisma.wallet.findUnique({
+        where: { userId: instructorId },
+        select: { totalEarnings: true, balance: true }
     });
+    const walletBalance = userWallet?.balance || 0;
+    const totalRevenue = userWallet?.totalEarnings || 0;
+
 
     // 1. Fetch all courses for the instructor
     const courses = await prisma.course.findMany({
@@ -222,8 +228,8 @@ export const getInstructorDashboardData = async (instructorId: string) => {
     const totalCourses = courses.length;
     const publishedCourses = courses.filter(c => c.isPublished).length;
     const totalEnrollments = courses.reduce((sum, course) => sum + course._count.enrollments, 0);
-    const totalRevenue = user?.totalEarnings || 0;
-    const walletBalance = user?.walletBalance || 0;
+    // totalRevenue and walletBalance already handled above
+
 
     // 2. Format Active Courses (Published)
     const activeCourses = courses

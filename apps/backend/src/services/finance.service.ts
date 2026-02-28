@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import Logger from '../lib/logger';
 
 interface BankDetailsDTO {
     type: 'UPI' | 'BANK';
@@ -9,14 +10,13 @@ interface BankDetailsDTO {
 }
 
 export const getInstructorFinance = async (instructorId: string) => {
-    const user = await prisma.user.findUnique({
-        where: { id: instructorId },
-        select: { walletBalance: true, totalEarnings: true, bankDetails: true }
+    const wallet = await prisma.wallet.findUnique({
+        where: { userId: instructorId }
     });
 
-    if (!user) {
+    if (!wallet) {
         return {
-            walletBalance: 0,
+            balance: 0,
             totalEarnings: 0,
             bankDetails: null,
             payouts: [],
@@ -29,19 +29,32 @@ export const getInstructorFinance = async (instructorId: string) => {
         orderBy: { requestedAt: 'desc' }
     });
 
-    // Auto-healing: Credit missing earnings for successful enrollments
-    console.log(`[Finance] Starting auto-heal check for Instructor: ${instructorId}`);
+    const earnings = await prisma.earningsLedger.findMany({
+        where: { instructorId },
+        orderBy: { createdAt: 'desc' },
+        take: 50 // Recent history
+    });
+
+    return { ...wallet, payouts, earnings };
+};
+
+/**
+ * Auto-heal: Credits missing earnings for successful enrollments.
+ * Should be called from admin endpoints or scheduled jobs ONLY — NOT on every page load.
+ */
+export const healMissingEarnings = async (instructorId: string) => {
+    Logger.info(`[Finance] Starting auto-heal check for Instructor: ${instructorId}`);
     const enrollments = await prisma.enrollment.findMany({
         where: { course: { instructorId } },
         include: { course: true }
     });
-    console.log(`[Finance] Found ${enrollments.length} enrollments`);
+    Logger.debug(`[Finance] Found ${enrollments.length} enrollments`);
 
     const existingEarnings = await prisma.earningsLedger.findMany({
         where: { instructorId, type: 'COURSE_SALE' },
         select: { courseId: true }
     });
-    console.log(`[Finance] Found ${existingEarnings.length} existing earnings records`);
+    Logger.debug(`[Finance] Found ${existingEarnings.length} existing earnings records`);
 
     // Map counts per course
     const earningsCounts: Record<string, number> = {};
@@ -58,12 +71,12 @@ export const getInstructorFinance = async (instructorId: string) => {
     let creditCount = 0;
     for (const courseId in enrollmentCounts) {
         const missing = enrollmentCounts[courseId] - (earningsCounts[courseId] || 0);
-        console.log(`[Finance] Course ${courseId}: ${enrollmentCounts[courseId]} enrolls, ${earningsCounts[courseId] || 0} earnings. Missing: ${missing}`);
+        Logger.debug(`[Finance] Course ${courseId}: ${enrollmentCounts[courseId]} enrolls, ${earningsCounts[courseId] || 0} earnings. Missing: ${missing}`);
         if (missing > 0) {
             const course = enrollments.find(e => e.courseId === courseId)?.course;
             if (course && (course.price > 0 || (course.discountedPrice || 0) > 0)) {
                 const amount = course.discountedPrice || course.price;
-                console.log(`[Finance] Crediting ${missing} sales for course "${course.title}" at amount ₹${amount}`);
+                Logger.info(`[Finance] Crediting ${missing} sales for course "${course.title}" at amount ₹${amount}`);
                 for (let i = 0; i < missing; i++) {
                     await recordCourseSale(instructorId, courseId, amount);
                     creditCount++;
@@ -71,33 +84,27 @@ export const getInstructorFinance = async (instructorId: string) => {
             }
         }
     }
-    console.log(`[Finance] Auto-heal complete. Credited ${creditCount} records.`);
-
-    const earnings = await prisma.earningsLedger.findMany({
-        where: { instructorId },
-        orderBy: { createdAt: 'desc' },
-        take: 50 // Recent history
-    });
-
-    // Re-fetch user to get updated balances
-    const updatedUser = await prisma.user.findUnique({
-        where: { id: instructorId },
-        select: { walletBalance: true, totalEarnings: true, bankDetails: true }
-    });
-
-    return { ...(updatedUser || user), payouts, earnings };
+    Logger.info(`[Finance] Auto-heal complete. Credited ${creditCount} records.`);
+    return { credited: creditCount };
 };
+
+
 
 export const updateBankDetails = async (instructorId: string, details: BankDetailsDTO) => {
-    return prisma.user.update({
-        where: { id: instructorId },
-        data: { bankDetails: JSON.stringify(details) }
+    return prisma.wallet.upsert({
+        where: { userId: instructorId },
+        update: { bankDetails: JSON.stringify(details) },
+        create: {
+            userId: instructorId,
+            bankDetails: JSON.stringify(details)
+        }
     });
 };
 
+
 export const requestPayout = async (instructorId: string) => {
-    const user = await prisma.user.findUnique({ where: { id: instructorId } });
-    if (!user || user.walletBalance <= 0) {
+    const wallet = await prisma.wallet.findUnique({ where: { userId: instructorId } });
+    if (!wallet || wallet.balance <= 0) {
         throw new Error("Insufficient balance");
     }
 
@@ -107,7 +114,8 @@ export const requestPayout = async (instructorId: string) => {
     });
     if (pending) throw new Error("A payout request is already pending.");
 
-    const amount = user.walletBalance;
+    const amount = wallet.balance;
+
 
     // Create Payout Request
     // Note: We do NOT deduct balance yet, or we DO?
@@ -124,10 +132,11 @@ export const requestPayout = async (instructorId: string) => {
             }
         });
 
-        await tx.user.update({
-            where: { id: instructorId },
-            data: { walletBalance: 0 } // Move all to pending
+        await tx.wallet.update({
+            where: { userId: instructorId },
+            data: { balance: 0 } // Move all to pending
         });
+
 
         await tx.earningsLedger.create({
             data: {
@@ -148,9 +157,18 @@ export const getAdminPayouts = async (status?: string) => {
 
     return prisma.payout.findMany({
         where,
-        include: { instructor: { select: { name: true, email: true, bankDetails: true } } },
+        include: {
+            instructor: {
+                select: {
+                    name: true,
+                    email: true,
+                    wallet: { select: { bankDetails: true } }
+                }
+            }
+        },
         orderBy: { requestedAt: 'desc' }
     });
+
 };
 
 export const processPayout = async (payoutId: string, transactionRef: string, action: 'APPROVE' | 'REJECT') => {
@@ -172,10 +190,11 @@ export const processPayout = async (payoutId: string, transactionRef: string, ac
                 data: { status: 'REJECTED', processedAt: new Date() }
             });
 
-            await tx.user.update({
-                where: { id: payout.instructorId },
-                data: { walletBalance: { increment: payout.amount } }
+            await tx.wallet.update({
+                where: { userId: payout.instructorId },
+                data: { balance: { increment: payout.amount } }
             });
+
 
             await tx.earningsLedger.create({
                 data: {
@@ -195,13 +214,14 @@ export const recordCourseSale = async (instructorId: string, courseId: string, a
     const share = amount * 0.70;
 
     await prisma.$transaction([
-        prisma.user.update({
-            where: { id: instructorId },
+        prisma.wallet.update({
+            where: { userId: instructorId },
             data: {
-                walletBalance: { increment: share },
+                balance: { increment: share },
                 totalEarnings: { increment: share }
             }
         }),
+
         prisma.earningsLedger.create({
             data: {
                 instructorId,

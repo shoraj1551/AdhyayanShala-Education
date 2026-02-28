@@ -8,6 +8,10 @@ import { Shield, Key, AlertTriangle, Lock, Eye, EyeOff } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import { toast } from "sonner";
+import * as api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+
+
 import {
     Dialog,
     DialogContent,
@@ -19,7 +23,9 @@ import {
 } from "@/components/ui/dialog";
 
 export function SecuritySettings() {
+    const { token, user } = useAuth();
     const [twoFactor, setTwoFactor] = useState(false);
+
 
     // Password state
     const [currentPassword, setCurrentPassword] = useState("");
@@ -29,6 +35,10 @@ export function SecuritySettings() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+    const canDelete = user?.canDeleteAccount || user?.role === 'ADMIN';
+
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,15 +52,24 @@ export function SecuritySettings() {
         }
 
         setIsUpdatingPassword(true);
-        // Simulate API call
-        setTimeout(() => {
-            setIsUpdatingPassword(false);
+        try {
+            if (!token) throw new Error("Authentication required");
+            await api.changePassword({
+                currentPassword,
+                newPassword
+            }, token);
+
             setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
             toast.success("Password updated successfully!");
-        }, 1500);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to update password");
+        } finally {
+            setIsUpdatingPassword(false);
+        }
     };
+
 
     return (
         <div className="space-y-10">
@@ -194,10 +213,21 @@ export function SecuritySettings() {
                         <div className="space-y-1">
                             <p className="font-black text-zinc-900">Delete Account</p>
                             <p className="text-sm text-zinc-500 font-medium">Permanently wipe all your courses, history, and records.</p>
+                            {!canDelete && (
+                                <p className="text-[10px] text-red-600 font-bold uppercase tracking-tighter mt-1 flex items-center gap-1">
+                                    <Lock size={10} /> Deletion locked by administrator
+                                </p>
+                            )}
                         </div>
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="destructive" className="h-12 px-8 rounded-xl font-bold uppercase tracking-widest shadow-xl shadow-red-500/10">Delete Account</Button>
+                                <Button
+                                    variant="destructive"
+                                    disabled={!canDelete}
+                                    className="h-12 px-8 rounded-xl font-bold uppercase tracking-widest shadow-xl shadow-red-500/10 disabled:opacity-50"
+                                >
+                                    Delete Account
+                                </Button>
                             </DialogTrigger>
                             <DialogContent className="rounded-3xl border-2 border-white/50 bg-white/95 backdrop-blur-2xl max-w-md">
                                 <DialogHeader className="pt-6">
@@ -208,11 +238,31 @@ export function SecuritySettings() {
                                 </DialogHeader>
                                 <DialogFooter className="pb-6 pt-4 gap-3">
                                     <Button variant="outline" className="rounded-xl h-12 flex-1 font-bold">CANCEL</Button>
-                                    <Button variant="destructive" className="rounded-xl h-12 flex-1 font-bold">YES, DELETE</Button>
+                                    <Button
+                                        variant="destructive"
+                                        className="rounded-xl h-12 flex-1 font-bold"
+                                        disabled={isDeletingAccount}
+                                        onClick={async () => {
+                                            setIsDeletingAccount(true);
+                                            try {
+                                                if (!token) throw new Error("Authentication required");
+                                                await api.deleteMyAccount(token);
+                                                toast.success("Account deleted successfully");
+                                                window.location.href = "/login";
+                                            } catch (error: any) {
+                                                toast.error(error.message || "Failed to delete account");
+                                            } finally {
+                                                setIsDeletingAccount(false);
+                                            }
+                                        }}
+                                    >
+                                        {isDeletingAccount ? "DELETING..." : "YES, DELETE"}
+                                    </Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
                     </div>
+
                 </CardContent>
             </Card>
         </div>

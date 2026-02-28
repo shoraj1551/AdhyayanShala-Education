@@ -10,12 +10,52 @@ interface User {
     name?: string;
     role: string;
     avatar?: string;
-    // Extended Profile Fields
+    phoneNumber?: string;
+    canDeleteAccount?: boolean;
+    // Partitioned Data (Flattened for compatibility)
     bio?: string;
     linkedin?: string;
     expertise?: string;
-    phoneNumber?: string;
+    experience?: string;
+    mentorshipFee?: number;
+    studentStatus?: string;
+    studentSubStatus?: string;
+    interests?: string;
+    balance?: number;
+    totalEarnings?: number;
+    bankDetails?: string;
 }
+
+// Internal type for backend response
+interface BackendUserResponse extends Omit<User, 'bio' | 'linkedin' | 'expertise' | 'experience' | 'mentorshipFee' | 'studentStatus' | 'studentSubStatus' | 'interests' | 'balance' | 'totalEarnings' | 'bankDetails'> {
+    instructorProfile?: {
+        bio?: string;
+        expertise?: string;
+        experience?: string;
+        linkedin?: string;
+        mentorshipFee?: number;
+    };
+    studentProfile?: {
+        studentStatus?: string;
+        studentSubStatus?: string;
+        interests?: string;
+    };
+    wallet?: {
+        balance?: number;
+        totalEarnings?: number;
+        bankDetails?: string;
+    };
+}
+
+const flattenUser = (userData: BackendUserResponse): User => {
+    return {
+        ...userData,
+        ...(userData.instructorProfile || {}),
+        ...(userData.studentProfile || {}),
+        ...(userData.wallet || {}),
+    } as User;
+};
+
 
 interface AuthContextType {
     user: User | null;
@@ -40,10 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setToken(storedToken);
             // Verify token/Fetch user
             api
-                .get("/auth/me", storedToken)
-                .then((userData) => {
-                    setUser(userData);
+                .then((userData: BackendUserResponse) => {
+                    setUser(flattenUser(userData));
                 })
+
                 .catch(() => {
                     logout();
                 })
@@ -55,10 +95,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const login = (newToken: string, newUser: User, redirectPath?: string) => {
+    const login = (newToken: string, newUserResponse: any, redirectPath?: string) => {
+        const newUser = flattenUser(newUserResponse);
         setToken(newToken);
         setUser(newUser);
         localStorage.setItem("token", newToken);
+
 
         if (redirectPath) {
             router.push(redirectPath);
@@ -86,9 +128,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [router, user]);
 
-    const updateUser = (newUser: User) => {
-        setUser(newUser);
+    const updateUser = (newUserResponse: any) => {
+        setUser(flattenUser(newUserResponse));
     };
+
 
     return (
         <AuthContext.Provider value={{ user, token, login, logout, updateUser, isLoading }}>

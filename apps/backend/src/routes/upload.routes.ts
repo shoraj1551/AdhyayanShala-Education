@@ -4,8 +4,12 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import Logger from '../lib/logger';
+import { authenticateToken } from '../middleware/auth.middleware';
 
 const router = express.Router();
+
+// All upload routes require authentication
+router.use(authenticateToken);
 
 // Ensure upload directory exists
 const uploadDir = path.join(__dirname, '../../public/uploads');

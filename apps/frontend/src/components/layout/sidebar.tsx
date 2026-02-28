@@ -26,6 +26,7 @@ export const commonItems = [
 export const studentItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { title: "Browse Courses", href: "/courses", icon: Library },
+    { title: "Practice Portal", href: "/practice", icon: TrendingUp },
     { title: "My Learning", href: "/my-learning", icon: GraduationCap },
     { title: "Mentorship", href: "/mentorship", icon: Users },
     { title: "History", href: "/history", icon: History },
@@ -35,6 +36,7 @@ export const studentItems = [
 export const instructorItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { title: "My Courses", href: "/instructor/courses", icon: BookOpen },
+    { title: "Practice Portal", href: "/practice", icon: TrendingUp },
     { title: "Create Course", href: "/instructor/create", icon: Plus },
     { title: "Mentorship Sessions", href: "/instructor/mentorship", icon: Users },
     { title: "Earnings & Payouts", href: "/instructor/finance", icon: IndianRupee },
@@ -54,7 +56,10 @@ export const adminItems = [
 ];
 
 export const getNavItems = (user: any) => {
-    if (!user) return [{ title: "Browse Courses", href: "/courses", icon: Library }];
+    if (!user) return [
+        { title: "Browse Courses", href: "/courses", icon: Library },
+        { title: "Practice Portal", href: "/practice", icon: TrendingUp }
+    ];
     if (user.role === 'INSTRUCTOR') return instructorItems;
     if (user.role === 'ADMIN') return adminItems;
     return studentItems;
@@ -78,9 +83,12 @@ export function Sidebar() {
                 <nav className="grid gap-1 px-2">
                     {items.map((item, index) => {
                         const Icon = item.icon;
-                        const isActive = pathname === item.href;
+                        const isActive = item.href === "/"
+                            ? pathname === "/"
+                            : pathname.startsWith(item.href);
 
                         return (
+
                             <Link
                                 key={index}
                                 href={item.href}

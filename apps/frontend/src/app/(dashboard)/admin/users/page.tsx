@@ -86,9 +86,10 @@ export default function UserManagementPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline">Export CSV</Button>
-                    <Link href="/resgister">
+                    <Link href="/admin/users/add">
                         <Button>Add User</Button>
                     </Link>
+
                 </div>
             </div>
 

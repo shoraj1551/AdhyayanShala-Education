@@ -24,9 +24,10 @@ export const getAvailability = async (req: AuthRequest, res: Response, next: Nex
         const instructor = await MentorshipService.getInstructorByIdWithSlots(userId);
 
         res.json({
-            fee: instructor.instructor.mentorshipFee,
+            fee: instructor.instructor.instructorProfile?.mentorshipFee || 0,
             slots: instructor.slots
         });
+
     } catch (error) {
         next(error);
     }

@@ -35,9 +35,14 @@ const parseEnv = () => {
         return envSchema.parse(process.env);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            console.error('⚠️ Environment variable validation warnings:', JSON.stringify(error.format(), null, 2));
-            // Return partially valid object or raw process.env casted to any to prevent crash
-            return process.env as any;
+            const formatted = JSON.stringify(error.format(), null, 2);
+            if (process.env.NODE_ENV === 'production') {
+                console.error('❌ FATAL: Environment variable validation failed in production:', formatted);
+                process.exit(1);
+            }
+            console.warn('⚠️ Environment variable validation warnings (dev mode):', formatted);
+            // In development, attempt partial parse with defaults
+            return envSchema.partial().parse(process.env) as any;
         }
         throw error;
     }

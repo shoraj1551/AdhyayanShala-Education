@@ -16,10 +16,9 @@ if (config.SENTRY_DSN) {
         integrations: [
             nodeProfilingIntegration(),
         ],
-        // Performance Monitoring
-        tracesSampleRate: 1.0,
-        // Set sampling rate for profiling - this is relative to tracesSampleRate
-        profilesSampleRate: 1.0,
+        // Performance Monitoring — 10% in production, 100% in dev
+        tracesSampleRate: config.NODE_ENV === 'production' ? 0.1 : 1.0,
+        profilesSampleRate: config.NODE_ENV === 'production' ? 0.1 : 1.0,
     });
 }
 
@@ -46,6 +45,8 @@ import adminAnalyticsRoutes from './routes/admin-analytics.routes';
 import financeRoutes from './routes/finance.routes';
 import publicRoutes from './routes/public.routes';
 import adminContentRoutes from './routes/admin-content.routes';
+import practiceRoutes from './routes/practice.routes';
+import newsletterRoutes from './routes/newsletter.routes';
 
 const app: Express = express();
 const port = config.PORT;
@@ -57,27 +58,33 @@ import { errorHandler } from './middleware/errorHandler';
 // Middleware
 app.set("trust proxy", 1);
 
-// Manual CORS handler to ensure headers are ALWAYS present
-app.use((req, res, next) => {
-    const origin = req.get('origin');
-    if (origin) {
-        res.header('Access-Control-Allow-Origin', origin);
-    } else {
-        res.header('Access-Control-Allow-Origin', '*');
-    }
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Origin, Accept, X-Requested-With');
+// CORS — Whitelist approved origins only
+const allowedOrigins = [
+    config.FRONTEND_URL,
+    'http://localhost:3000',
+    'http://localhost:3001'
+].filter(Boolean);
 
-    // Handle preflight
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        Logger.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With']
+}));
 
-app.use(express.json());
-// app.use(helmet()); // Temporarily disabled for CORS troubleshooting
+app.use(express.json({ limit: '1mb' }));
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: false // Re-enable and configure for production when frontend CSP is ready
+}));
 app.use(morgan('combined', { stream: { write: (message) => Logger.info(message.trim()) } }));
 
 // Compression middleware - reduces response size by 60-80%
@@ -147,6 +154,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/upload', uploadLimiter, uploadRoutes);
 app.use('/api', discussionRoutes);
 app.use('/api/finance', financeRoutes);
+app.use('/api/practice', practiceRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/mentorship', mentorshipRoutes);
 
 // Admin Routes
@@ -168,9 +177,10 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
         // Start Reminder Jobs (Every 5 minutes)
         setInterval(async () => {
             try {
-                const { sendMentorshipReminders, sendAllClassReminders } = await import('./services/notification.service');
+                const { sendMentorshipReminders, sendAllClassReminders, sendTestAvailableNotifications } = await import('./services/notification.service');
                 await sendMentorshipReminders(15);
                 await sendAllClassReminders(15);
+                await sendTestAvailableNotifications();
             } catch (err) {
                 Logger.error('[ReminderJob] Error:', err);
             }

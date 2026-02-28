@@ -12,7 +12,8 @@ import { Loader2, AlertCircle, GraduationCap, LayoutDashboard, ShieldCheck, User
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { DEFAULT_INTERESTS, DEFAULT_STUDENT_STATUSES, INSTRUCTOR_EXPERTISE_OPTIONS } from "@/lib/constants";
+import { DEFAULT_INTERESTS, DEFAULT_STUDENT_STATUSES, INSTRUCTOR_EXPERTISE_OPTIONS, STUDENT_SUB_OPTIONS } from "@/lib/constants";
+
 
 function RegisterForm() {
     const searchParams = useSearchParams();
@@ -53,7 +54,9 @@ function RegisterForm() {
         password: "",
         phone: "",
         currentStatus: "",
+        subStatus: "",
         interests: "",
+
         // Instructor specific
         expertise: "",
         experience: "",
@@ -85,8 +88,10 @@ function RegisterForm() {
         try {
             const payload = {
                 ...formData,
-                role: role.toUpperCase()
+                role: role.toUpperCase(),
             };
+
+
             await api.post("/auth/register", payload);
             // login(res.token, res.user); // Removed auto-login
             toast.success("Account created successfully!", {
@@ -147,29 +152,48 @@ function RegisterForm() {
 
     const Icon = getIcon();
 
-    if (isAdmin) {
+    if (isAdmin || (isInstructor && !isAdmin)) { // Admin or Public Instructor
+        const isPublicInstructor = isInstructor && !isAdmin;
         return (
             <Card className="border-white/10 bg-zinc-900/80 backdrop-blur-xl shadow-2xl w-full max-w-md">
                 <CardHeader className="text-center">
                     <div className="flex justify-center mb-4">
-                        <div className="bg-rose-500/10 ring-rose-500/20 text-rose-500 p-3 rounded-full ring-1">
-                            <ShieldCheck className="h-8 w-8" />
+                        <div className={cn(
+                            "p-3 rounded-full ring-1 shadow-lg",
+                            isAdmin ? "bg-rose-500/10 ring-rose-500/20 text-rose-500" : "bg-emerald-500/10 ring-emerald-500/20 text-emerald-500"
+                        )}>
+                            {isAdmin ? <ShieldCheck className="h-8 w-8" /> : <GraduationCap className="h-8 w-8" />}
                         </div>
                     </div>
-                    <CardTitle className="text-2xl font-bold text-white">Admin Access Restricted</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-white">
+                        {isAdmin ? "Admin Access Restricted" : "Instructor Registration"}
+                    </CardTitle>
                     <CardDescription className="text-zinc-400 mt-2">
-                        Administrators cannot create accounts publicly. <br />
-                        Please contact the system owner for credentials.
+                        {isAdmin ? (
+                            <>Administrators cannot create accounts publicly. <br /> Please contact the system owner for credentials.</>
+                        ) : (
+                            <>Public instructor registration is disabled. <br /> Please fill out our faculty application form to apply.</>
+                        )}
                     </CardDescription>
                 </CardHeader>
-                <CardFooter className="flex justify-center pb-6">
-                    <Button variant="outline" asChild>
-                        <Link href="/login?role=admin">Return to Admin Login</Link>
+                <CardFooter className="flex flex-col gap-4 justify-center pb-6">
+                    {isPublicInstructor && (
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-emerald-900/20" asChild>
+                            <a href="https://forms.gle/placeholder-faculty-application" target="_blank" rel="noopener noreferrer">
+                                APPLY FOR FACULTY POSITION
+                            </a>
+                        </Button>
+                    )}
+                    <Button variant="outline" className="w-full border-white/10 text-zinc-400 hover:text-white hover:bg-white/5" asChild>
+                        <Link href={isAdmin ? "/login?role=admin" : "/login?role=instructor"}>
+                            Return to {isAdmin ? "Admin" : "Instructor"} Login
+                        </Link>
                     </Button>
                 </CardFooter>
             </Card>
         );
     }
+
 
     return (
         <Card className={cn(
@@ -243,39 +267,79 @@ function RegisterForm() {
                     </div>
 
                     {isStudent && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <div className="space-y-2">
-                                <Label className="text-zinc-300">I am a</Label>
-                                <Select onValueChange={(val) => handleChange("currentStatus", val)}>
-                                    <SelectTrigger className="bg-zinc-950/50 border-white/10 text-white">
-                                        <SelectValue placeholder="Select Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {studentStatuses.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-300">I am a</Label>
+                                    <Select onValueChange={(val) => {
+                                        handleChange("currentStatus", val);
+                                        handleChange("subStatus", ""); // Reset sub-status on change
+                                    }}>
+                                        <SelectTrigger className="bg-zinc-950/50 border-white/10 text-white">
+                                            <SelectValue placeholder="Select Status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {studentStatuses.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-300">Interested In</Label>
+                                    <Select onValueChange={(val) => handleChange("interests", val)}>
+                                        <SelectTrigger className="bg-zinc-950/50 border-white/10 text-white">
+                                            <SelectValue placeholder="Select Topic" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {interestOptions.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-zinc-300">Interested In</Label>
-                                <Select onValueChange={(val) => handleChange("interests", val)}>
-                                    <SelectTrigger className="bg-zinc-950/50 border-white/10 text-white">
-                                        <SelectValue placeholder="Select Topic" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {interestOptions.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+
+                            {/* Category Specific Info */}
+                            {formData.currentStatus && (
+                                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 animate-in fade-in zoom-in-95 duration-500">
+                                    <p className="text-xs text-primary font-bold flex items-center gap-2">
+                                        <GraduationCap className="h-4 w-4" />
+                                        {formData.currentStatus === 'school' && "Tailored for Class 9-12 curriculum & board excellence."}
+                                        {formData.currentStatus === 'college' && "Bridge the gap between academics and industry skills."}
+                                        {formData.currentStatus === 'competitive' && "Precision learning for top-tier competitive exams."}
+                                        {formData.currentStatus === 'professional' && "Upskill and accelerate your career growth."}
+                                        {formData.currentStatus === 'other' && "Keep learning, keep growing with specialized tracks."}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Dynamic Sub-Options */}
+                            {formData.currentStatus && STUDENT_SUB_OPTIONS[formData.currentStatus] && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-500">
+                                    <Label className="text-zinc-300">{STUDENT_SUB_OPTIONS[formData.currentStatus].label}</Label>
+                                    <Select onValueChange={(val) => handleChange("subStatus", val)}>
+                                        <SelectTrigger className="bg-zinc-950/50 border-white/10 text-white transition-all hover:bg-zinc-900">
+                                            <SelectValue placeholder={`Select ${STUDENT_SUB_OPTIONS[formData.currentStatus].label}`} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {STUDENT_SUB_OPTIONS[formData.currentStatus].options.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
                         </div>
                     )}
+
 
                     {isInstructor && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">

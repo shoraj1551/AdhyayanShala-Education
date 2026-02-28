@@ -15,4 +15,7 @@ router.post('/transactions/:id/refund', AdminFinanceController.refundTransaction
 router.get('/payouts', FinanceController.getAdminPayouts);
 router.post('/payouts/:id/process', FinanceController.processPayout);
 
+// Earnings Reconciliation (Admin-only)
+router.post('/heal/:instructorId', FinanceController.healInstructorEarnings);
+
 export default router;

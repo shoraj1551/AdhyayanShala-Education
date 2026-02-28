@@ -11,16 +11,28 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Loader2, Calendar, Star, GraduationCap, ArrowRight, UserCheck, Clock } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogTrigger
+} from "@/components/ui/dialog";
+
 
 interface Instructor {
     id: string;
     name: string;
     avatar?: string;
-    expertise?: string;
-    bio?: string;
-    mentorshipFee: number;
+    instructorProfile?: {
+        expertise?: string;
+        bio?: string;
+        mentorshipFee: number;
+    };
     mentorshipSlots: any[];
 }
+
 
 export default function MentorshipPage() {
     const { token, user } = useAuth();
@@ -127,9 +139,10 @@ export default function MentorshipPage() {
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div className="text-right">
-                                                <div className="text-primary font-bold text-xl">₹{mentor.mentorshipFee}</div>
+                                                <div className="text-primary font-bold text-xl">₹{mentor.instructorProfile?.mentorshipFee || 0}</div>
                                                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">per session</div>
                                             </div>
+
                                         </div>
 
                                         <div className="space-y-1">
@@ -146,21 +159,23 @@ export default function MentorshipPage() {
                                         </div>
 
                                         <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3 font-medium">
-                                            {mentor.bio || "Industry expert ready to help you grow your skills and advance your career through personalized 1-on-1 sessions."}
+                                            {mentor.instructorProfile?.bio || "Industry expert ready to help you grow your skills and advance your career through personalized 1-on-1 sessions."}
                                         </p>
 
+
                                         <div className="flex flex-wrap gap-2 pt-2">
-                                            {mentor.expertise?.split(',').slice(0, 3).map((skill, i) => (
+                                            {mentor.instructorProfile?.expertise?.split(',').slice(0, 3).map((skill: string, i: number) => (
                                                 <Badge key={i} variant="secondary" className="bg-zinc-100 text-zinc-600 border-none rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                                                     {skill.trim()}
                                                 </Badge>
                                             ))}
-                                            {(mentor.expertise?.split(',').length || 0) > 3 && (
+                                            {(mentor.instructorProfile?.expertise?.split(',').length || 0) > 3 && (
                                                 <span className="text-[10px] font-bold text-muted-foreground self-center">
-                                                    +{(mentor.expertise?.split(',').length || 0) - 3} more
+                                                    +{(mentor.instructorProfile?.expertise?.split(',').length || 0) - 3} more
                                                 </span>
                                             )}
                                         </div>
+
                                     </div>
 
                                     <div className="p-6 pt-0 mt-auto">
@@ -200,11 +215,67 @@ export default function MentorshipPage() {
                             Our mentors can help you build a personalized learning path based on your goals and career aspirations.
                         </p>
                     </div>
-                    <Button variant="outline" className="h-14 px-10 bg-white/20 hover:bg-white border-white/20 hover:border-white text-white hover:text-primary font-bold text-lg rounded-2xl transition-all shadow-xl backdrop-blur-md">
-                        Learn How it Works
-                    </Button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="h-14 px-10 bg-white/20 hover:bg-white border-white/20 hover:border-white text-white hover:text-primary font-bold text-lg rounded-2xl transition-all shadow-xl backdrop-blur-md">
+                                Learn How it Works
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl bg-zinc-900 border-white/10 text-white">
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold">How 1-on-1 Mentorship Works</DialogTitle>
+                                <DialogDescription className="text-zinc-400">
+                                    Get personalized guidance from industry experts in 4 simple steps.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-6 py-6">
+                                <div className="flex gap-4">
+                                    <div className="p-3 bg-primary/10 rounded-xl h-fit">
+                                        <Search className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-lg">1. Find Your Mentor</h4>
+                                        <p className="text-sm text-zinc-400">Search instructors by their expertise, availability and industry experience.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="p-3 bg-emerald-500/10 rounded-xl h-fit">
+                                        <Calendar className="h-6 w-6 text-emerald-500" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-lg">2. Book a Session</h4>
+                                        <p className="text-sm text-zinc-400">Choose a date and time that fits your schedule from the mentor&apos;s active shifts.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="p-3 bg-amber-500/10 rounded-xl h-fit">
+                                        <Clock className="h-6 w-6 text-amber-500" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-lg">3. Share Your Goals</h4>
+                                        <p className="text-sm text-zinc-400">Before the session, provide context on what you want to achieve or specific questions you have.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="p-3 bg-blue-500/10 rounded-xl h-fit">
+                                        <GraduationCap className="h-6 w-6 text-blue-500" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h4 className="font-bold text-lg">4. Level Up Your Career</h4>
+                                        <p className="text-sm text-zinc-400">Join the live session and get actionable insights and a roadmap tailored just for you.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end pt-4">
+                                <Button className="bg-primary hover:bg-primary/90 text-white font-bold px-8 rounded-xl" asChild>
+                                    <DialogTrigger>Got it, thanks!</DialogTrigger>
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </CardContent>
             </Card>
+
         </div>
     );
 }

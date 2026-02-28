@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { ArrowLeft, Shield, Mail, Calendar, CreditCard, GraduationCap, Ban, LogOut, Key, IndianRupee, BookOpen, User, Wallet } from "lucide-react";
+import { ArrowLeft, Shield, Mail, Calendar, CreditCard, GraduationCap, Ban, LogOut, Key, IndianRupee, BookOpen, User, Wallet, CheckCircle2, Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 import { toast } from "sonner";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -40,10 +42,11 @@ export default function UserDetailPage() {
 
     const handleRoleUpdate = async (newRole: string) => {
         try {
-            await api.patch(`/admin/users/${id}/role`, { role: newRole }, token!);
+            await api.admin.users.updateRole(id as string, newRole, token!);
             toast.success(`Role updated to ${newRole}`);
             fetchUser();
         } catch (error: any) {
+
             toast.error(error.message || "Failed to update role");
         }
     };
@@ -121,14 +124,37 @@ export default function UserDetailPage() {
                         </div>
 
                         <div className="pt-4 space-y-2 border-t mt-4">
-                            <label className="text-xs font-semibold text-muted-foreground">SECURITY ACTIONS</label>
+                            <label className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                                SECURITY ACTIONS
+                                <Badge variant={user.canDeleteAccount ? "default" : "secondary"} className={cn("text-[10px] h-4", user.canDeleteAccount && "bg-emerald-500 hover:bg-emerald-600")}>
+                                    {user.canDeleteAccount ? "Deletion Allowed" : "Deletion Locked"}
+                                </Badge>
+                            </label>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                    try {
+                                        await api.admin.users.updateDeletePermission(user.id, !user.canDeleteAccount, token!);
+                                        toast.success(`Account deletion ${!user.canDeleteAccount ? 'enabled' : 'disabled'}`);
+                                        fetchUser();
+                                    } catch (err: any) {
+                                        toast.error(err.message || "Failed to update permission");
+                                    }
+                                }}
+                                className={cn(
+                                    "w-full justify-start gap-2 h-8 text-sm",
+                                    user.canDeleteAccount ? "text-red-600 hover:text-red-700 hover:bg-red-50" : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                )}
+                            >
+                                <Shield className="h-3 w-3" />
+                                {user.canDeleteAccount ? "Lock Deletion" : "Enable Deletion"}
+                            </Button>
                             <Button variant="outline" className="w-full justify-start gap-2 h-8 text-sm">
                                 <Key className="h-3 w-3" /> Reset Password
                             </Button>
-                            <Button variant="outline" className="w-full justify-start gap-2 h-8 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-50">
-                                <LogOut className="h-3 w-3" /> Force Sign Out
-                            </Button>
                         </div>
+
                     </CardContent>
                 </Card>
 
@@ -196,8 +222,9 @@ export default function UserDetailPage() {
                                             <div className="text-xs text-muted-foreground">Wallet Balance (Unpaid)</div>
                                             <div className="text-2xl font-bold text-emerald-700 flex items-center">
                                                 <IndianRupee className="h-5 w-5 mr-1" />
-                                                {user.walletBalance?.toLocaleString() || 0}
+                                                {(user.wallet?.balance || 0).toLocaleString()}
                                             </div>
+
                                         </CardContent>
                                     </Card>
                                     <Card className="bg-blue-50/50 border-blue-100">
@@ -205,8 +232,9 @@ export default function UserDetailPage() {
                                             <div className="text-xs text-muted-foreground">Total Earnings (Lifetime)</div>
                                             <div className="text-2xl font-bold text-blue-700 flex items-center">
                                                 <IndianRupee className="h-5 w-5 mr-1" />
-                                                {user.totalEarnings?.toLocaleString() || 0}
+                                                {(user.wallet?.totalEarnings || 0).toLocaleString()}
                                             </div>
+
                                         </CardContent>
                                     </Card>
                                 </div>

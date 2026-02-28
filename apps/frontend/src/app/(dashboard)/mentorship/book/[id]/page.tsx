@@ -23,9 +23,12 @@ interface Slot {
 interface Instructor {
     name: string;
     avatar: string;
-    bio: string;
-    mentorshipFee: number;
+    instructorProfile?: {
+        bio?: string;
+        mentorshipFee: number;
+    };
 }
+
 
 export default function BookMentorshipPage() {
     const params = useParams();
@@ -117,7 +120,8 @@ export default function BookMentorshipPage() {
                             <AvatarFallback className="text-2xl">{instructor.name?.[0]}</AvatarFallback>
                         </Avatar>
                         <CardTitle>{instructor.name}</CardTitle>
-                        <CardDescription className="line-clamp-3 mt-2">{instructor.bio || "Programming Mentor"}</CardDescription>
+                        <CardDescription className="line-clamp-3 mt-2">{instructor.instructorProfile?.bio || "Programming Mentor"}</CardDescription>
+
                     </CardHeader>
                     <CardContent className="space-y-4 pt-4">
                         <div className="flex items-center justify-between py-2 border-t border-b border-border/50">
@@ -135,13 +139,15 @@ export default function BookMentorshipPage() {
                                 <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-400">
                                     <div className="flex items-center gap-2 font-bold justify-between mb-1">
                                         <span className="flex items-center gap-1"><Tag className="h-4 w-4" /> First 2 Free!</span>
-                                        <span className="line-through opacity-60 text-xs">₹{instructor.mentorshipFee}</span>
+                                        <span className="line-through opacity-60 text-xs">₹{instructor.instructorProfile?.mentorshipFee || 0}</span>
                                     </div>
+
                                     <p className="text-xs">Since you are enrolled in a course by this instructor, your session is free.</p>
                                 </div>
                             ) : (
-                                <div className="text-2xl font-bold text-primary">₹{instructor.mentorshipFee}</div>
+                                <div className="text-2xl font-bold text-primary">₹{instructor.instructorProfile?.mentorshipFee || 0}</div>
                             )}
+
                         </div>
                     </CardContent>
                 </Card>

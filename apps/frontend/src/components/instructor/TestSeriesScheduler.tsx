@@ -12,12 +12,13 @@ interface Test {
     id: string;
     title: string;
     availableAt?: string | null;
+    expiresAt?: string | null;
     order: number;
 }
 
 interface TestSeriesSchedulerProps {
     tests: Test[];
-    onSave: (scheduledTests: { id: string; availableAt: string }[]) => Promise<void>;
+    onSave: (scheduledTests: { id: string; availableAt: string; expiresAt?: string }[]) => Promise<void>;
     startDate?: string;
 }
 
@@ -27,18 +28,19 @@ export function TestSeriesScheduler({ tests, onSave, startDate: courseStartDate 
     const [baseDate, setBaseDate] = useState(courseStartDate || format(new Date(), "yyyy-MM-dd"));
     const [loading, setLoading] = useState(false);
 
-    const handleDateChange = (id: string, date: string) => {
+    const handleDateChange = (id: string, field: 'availableAt' | 'expiresAt', date: string) => {
         setScheduledTests(prev => prev.map(t =>
-            t.id === id ? { ...t, availableAt: date } : t
+            t.id === id ? { ...t, [field]: date } : t
         ));
     };
 
     const autoSchedule = () => {
         let currentDate = new Date(baseDate);
         const newSchedule = [...scheduledTests].sort((a, b) => a.order - b.order).map((test, index) => {
-            const scheduledAt = format(currentDate, "yyyy-MM-dd'T'10:00:00"); // Default to 10 AM
-            currentDate = addDays(currentDate, gapDays);
-            return { ...test, availableAt: scheduledAt };
+            const startDate = addDays(new Date(baseDate), index * gapDays);
+            const scheduledAt = format(startDate, "yyyy-MM-dd'T'10:00:00"); // Default to 10 AM
+            const expiresAt = format(startDate, "yyyy-MM-dd'T'23:59:59"); // Default to end of day
+            return { ...test, availableAt: scheduledAt, expiresAt };
         });
         setScheduledTests(newSchedule);
     };
@@ -48,7 +50,11 @@ export function TestSeriesScheduler({ tests, onSave, startDate: courseStartDate 
         try {
             const updates = scheduledTests
                 .filter(t => t.availableAt)
-                .map(t => ({ id: t.id, availableAt: t.availableAt as string }));
+                .map(t => ({
+                    id: t.id,
+                    availableAt: t.availableAt as string,
+                    expiresAt: t.expiresAt || undefined
+                }));
             await onSave(updates);
         } finally {
             setLoading(false);
@@ -123,17 +129,35 @@ export function TestSeriesScheduler({ tests, onSave, startDate: courseStartDate 
                                         <p className="text-xs text-purple-500">Scheduled for release</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="relative flex-1">
-                                        <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-purple-400" />
-                                        <Input
-                                            type="datetime-local"
-                                            className="pl-9 border-purple-100 focus:ring-purple-200 h-9 text-sm"
-                                            value={test.availableAt ? format(new Date(test.availableAt), "yyyy-MM-dd'T'HH:mm") : ""}
-                                            onChange={(e) => handleDateChange(test.id, e.target.value)}
-                                        />
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <div className="flex flex-col gap-1">
+                                        <Label className="text-[10px] text-purple-600 font-bold uppercase ml-1">Starts At</Label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-purple-400" />
+                                            <Input
+                                                type="datetime-local"
+                                                className="pl-9 border-purple-100 focus:ring-purple-200 h-9 text-xs w-[180px]"
+                                                value={test.availableAt ? format(new Date(test.availableAt), "yyyy-MM-dd'T'HH:mm") : ""}
+                                                onChange={(e) => handleDateChange(test.id, 'availableAt', e.target.value)}
+                                            />
+                                        </div>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDateChange(test.id, "")}>
+                                    <div className="flex flex-col gap-1">
+                                        <Label className="text-[10px] text-zinc-500 font-bold uppercase ml-1">Expires At (Optional)</Label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                                            <Input
+                                                type="datetime-local"
+                                                className="pl-9 border-zinc-200 focus:ring-zinc-300 h-9 text-xs w-[180px]"
+                                                value={test.expiresAt ? format(new Date(test.expiresAt), "yyyy-MM-dd'T'HH:mm") : ""}
+                                                onChange={(e) => handleDateChange(test.id, 'expiresAt', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50 mt-5" onClick={() => {
+                                        handleDateChange(test.id, 'availableAt', "");
+                                        handleDateChange(test.id, 'expiresAt', "");
+                                    }}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>

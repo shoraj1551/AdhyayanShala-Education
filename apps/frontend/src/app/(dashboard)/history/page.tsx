@@ -131,7 +131,12 @@ export default function HistoryPage() {
                                 Icon = UserPlus;
                                 iconColor = "text-indigo-500";
                                 iconBg = "bg-indigo-500/10";
+                            } else if (item.type === 'MENTORSHIP_BOOKING') {
+                                Icon = Calendar;
+                                iconColor = "text-purple-500";
+                                iconBg = "bg-purple-500/10";
                             }
+
 
                             return (
                                 <Card key={item.id} className="border-none shadow-sm hover:shadow-md transition-all duration-300 bg-white group overflow-hidden">

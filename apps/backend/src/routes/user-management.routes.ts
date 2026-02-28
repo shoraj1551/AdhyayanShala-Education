@@ -10,7 +10,11 @@ router.use(authenticateToken);
 router.use(authorizeRole(['ADMIN']));
 
 router.get('/', UserManagementController.getUsers);
+router.post('/', UserManagementController.createUser);
 router.get('/:id', UserManagementController.getUser);
+
 router.patch('/:id/role', UserManagementController.updateUserRole);
+router.patch('/:id/delete-permission', UserManagementController.updateUserDeletePermission);
 
 export default router;
+

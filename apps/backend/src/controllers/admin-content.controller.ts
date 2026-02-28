@@ -238,3 +238,45 @@ export const deleteInquiry = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to delete inquiry' });
     }
 };
+// --- Newsletter / Waitlist ---
+
+export const getSubscribers = async (req: Request, res: Response) => {
+    try {
+        const subscribers = await prisma.newsletterSubscriber.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(subscribers);
+    } catch (error) {
+        Logger.error('Admin: Failed to fetch subscribers', error);
+        res.status(500).json({ error: 'Failed to fetch subscribers' });
+    }
+};
+
+export const updateSubscriberStatus = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status, isActive } = req.body;
+
+        const subscriber = await prisma.newsletterSubscriber.update({
+            where: { id },
+            data: { status, isActive }
+        });
+        res.json(subscriber);
+    } catch (error) {
+        Logger.error('Admin: Failed to update subscriber', error);
+        res.status(500).json({ error: 'Failed to update subscriber' });
+    }
+};
+
+export const deleteSubscriber = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await prisma.newsletterSubscriber.delete({
+            where: { id }
+        });
+        res.status(204).send();
+    } catch (error) {
+        Logger.error('Admin: Failed to delete subscriber', error);
+        res.status(500).json({ error: 'Failed to delete subscriber' });
+    }
+};

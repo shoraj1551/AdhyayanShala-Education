@@ -63,7 +63,18 @@ export const getUserAttempts = async (userId: string) => {
         return null;
     }));
 
-    // 3. Merge and return
+    // 3. Fetch Mentorship Bookings
+    const mentorships = await prisma.mentorshipBooking.findMany({
+        where: { studentId: userId },
+        include: {
+            instructor: {
+                select: { name: true }
+            }
+        },
+        orderBy: { date: 'desc' }
+    });
+
+    // 4. Merge and return
     const unifiedHistory = [
         ...attempts.map(a => ({
             id: a.id,
@@ -75,8 +86,20 @@ export const getUserAttempts = async (userId: string) => {
             score: a.score,
             testId: a.testId
         })),
-        ...completions.filter(c => c !== null) as any[]
+        ...completions.filter(c => c !== null).map((c: any) => ({
+            ...c,
+            type: 'COURSE_COMPLETION'
+        })),
+        ...mentorships.map(m => ({
+            id: m.id,
+            type: 'MENTORSHIP_BOOKING',
+            title: `Mentorship with ${m.instructor.name}`,
+            date: m.date,
+            description: `Scheduled for ${m.startTime}`,
+            status: m.status
+        }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 
     return unifiedHistory;
 };

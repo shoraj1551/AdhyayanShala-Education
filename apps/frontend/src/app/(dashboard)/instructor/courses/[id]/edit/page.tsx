@@ -384,7 +384,10 @@ export default function CourseEditorPage() {
                             onSave={async (updates) => {
                                 try {
                                     await Promise.all(updates.map(u =>
-                                        api.patch(`/tests/${u.id}`, { availableAt: u.availableAt }, token ?? undefined)
+                                        api.patch(`/tests/${u.id}`, {
+                                            availableAt: u.availableAt,
+                                            expiresAt: u.expiresAt
+                                        }, token ?? undefined)
                                     ));
                                     alert("Schedule saved successfully!");
                                     fetchCourse();

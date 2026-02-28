@@ -29,6 +29,35 @@ enum CourseLevel {
   ADVANCED
 }
 
+enum PayoutStatus {
+  REQUESTED
+  PROCESSED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  MOCK
+  MANUAL
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
+enum CourseType {
+  VIDEO
+  LIVE
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -39,19 +68,19 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // Extended Profile
-  bio           String?
-  expertise     String?
-  experience    String?
-  linkedin      String?
-  studentStatus String?
-  interests     String?
+  phoneNumber      String?
+  canDeleteAccount Boolean @default(false)
   
   // OTP for critical actions
   deleteOtp        String?
   deleteOtpExpires DateTime?
   loginOtp         String?
   loginOtpExpires  DateTime?
+
+  // Profile Relations
+  instructorProfile InstructorProfile?
+  studentProfile    StudentProfile?
+  wallet           Wallet?
 
   enrollments      Enrollment[]
   attempts         Attempt[]
@@ -61,16 +90,8 @@ model User {
   reviews          Review[]
   notes            Note[]
   comments         LessonComment[]
+  questionComments QuestionComment[]
   payments         Payment[]
-
-  phoneNumber      String?
-  
-  // Finance
-  walletBalance    Float    @default(0)
-  mentorshipFee    Float    @default(0) // Default hourly fee for 1-1 mentorship
-  totalEarnings    Float    @default(0)
-  bankDetails      String?  // JSON: { type: 'UPI'|'BANK', value: ... }
-  
   payouts          Payout[]
   earnings         EarningsLedger[]
   mentorshipSlots  MentorshipSlot[]   @relation("InstructorSlots")
@@ -78,10 +99,45 @@ model User {
   mentorshipsTaken MentorshipBooking[] @relation("MentorshipAsStudent")
 }
 
+model InstructorProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  bio           String?
+  expertise     String?
+  experience    String?
+  linkedin      String?
+  mentorshipFee Decimal  @default(0) @db.Decimal(10, 2)
+}
+
+model StudentProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  studentStatus    String?
+  studentSubStatus String?
+  interests        String?
+
+}
+
+model Wallet {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  balance       Decimal  @default(0) @db.Decimal(10, 2)
+  totalEarnings Decimal  @default(0) @db.Decimal(10, 2)
+  bankDetails   String?  // JSON string
+}
+
+
+
 model Payout {
   id            String   @id @default(uuid())
-  amount        Float
-  status        String   @default("REQUESTED") // REQUESTED, PROCESSED, REJECTED
+  amount        Decimal  @db.Decimal(10, 2)
+  status        PayoutStatus @default(REQUESTED)
   transactionRef String? // Bank Ref ID
   
   instructorId  String
@@ -93,7 +149,7 @@ model Payout {
 
 model EarningsLedger {
   id            String   @id @default(uuid())
-  amount        Float
+  amount        Decimal  @db.Decimal(10, 2)
   type          String   // COURSE_SALE, WITHDRAWAL, ADJUSTMENT
   description   String?
   
@@ -134,9 +190,9 @@ model Course {
   description   String?
   level         CourseLevel @default(BEGINNER)
   prerequisites String?  // JSON or text list of prereqs
-  price         Float    @default(0)  // Total price (VIDEO) or calculated total (LIVE)
-  pricePerClass Float?   // Only for LIVE courses
-  discountedPrice Float? // Optional discounted total for LIVE courses
+  price         Decimal  @default(0) @db.Decimal(10, 2)  // Total price (VIDEO) or calculated total (LIVE)
+  pricePerClass Decimal? @db.Decimal(10, 2)  // Only for LIVE courses
+  discountedPrice Decimal? @db.Decimal(10, 2) // Optional discounted total for LIVE courses
   totalClasses  Int?     // Number of classes for LIVE courses
   startDate     DateTime? // Course start date (required for LIVE)
   endDate       DateTime? // Course end date (required for LIVE)
@@ -151,7 +207,7 @@ model Course {
   brochureUrl     String?  // Course Brochure (PDF/Word/PPT)
   currency        String   @default("INR") // INR, USD, CAD
   maxStudents     Int?     // Max enrollment limit for LIVE courses
-  type            String   @default("VIDEO") // VIDEO or LIVE
+  type            CourseType @default(VIDEO)
 
   liveSettings    LiveClassSettings?
   schedules       ClassSchedule[]
@@ -253,6 +309,8 @@ model Enrollment {
   notifyEmail Boolean @default(true)
 
   @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
 }
 
 model Test {
@@ -279,6 +337,9 @@ model Test {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   availableAt DateTime?
+  expiresAt   DateTime?
+  isPractice  Boolean @default(false)
+  category    String? // PYQ, UPSC, SSC, etc.
 }
 
 model Question {
@@ -295,6 +356,30 @@ model Question {
   // New Test Framework Fields
   negativeMarks Float      @default(0) // Penalty for wrong answer
   order         Int        @default(0)
+  isPractice    Boolean    @default(false)
+  category      String?    // PYQ, SSC, etc.
+  
+  // Practice Portal & Feedback
+  solution      QuestionSolution?
+  comments      QuestionComment[]
+}
+
+model QuestionSolution {
+  id         String   @id @default(uuid())
+  text       String?  @db.Text
+  audioUrl   String?
+  questionId String   @unique
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model QuestionComment {
+  id         String   @id @default(uuid())
+  text       String   @db.Text
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 }
 
 model Option {
@@ -318,9 +403,12 @@ model Attempt {
   completedAt DateTime?
   
   // New Test Framework Fields
-  responses Json?    // Stores object mapping questionId -> { optionId, status: "ANSWERED" | "REVIEW", timeSpent }
-  status    String   @default("IN_PROGRESS") // "IN_PROGRESS", "SUBMITTED"
+  responses Json?    // Stores object mapping questionId -> { optionId, status, timeSpent }
+  status    AttemptStatus @default(IN_PROGRESS)
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([testId])
 }
 
 model Announcement {
@@ -337,6 +425,7 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String?
   message   String
+  link      String?
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
@@ -373,10 +462,10 @@ model LessonComment {
 
 model Payment {
   id        String   @id @default(uuid())
-  amount    Float
+  amount    Decimal  @db.Decimal(10, 2)
   currency  String   @default("INR")
-  status    String   // SUCCESS, FAILED, PENDING, REFUNDED
-  provider  String   @default("RAZORPAY")
+  status    PaymentStatus // SUCCESS, FAILED, PENDING, REFUNDED
+  provider  PaymentProvider @default(RAZORPAY)
   
   // Provider IDs for reconciliation
   providerPaymentId String?
@@ -397,6 +486,9 @@ model Payment {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
 }
 
 model TeamMember {
@@ -460,10 +552,12 @@ model ContactInquiry {
 model NewsletterSubscriber {
   id        String   @id @default(uuid())
   email     String   @unique
+  status    String   @default("PENDING") // PENDING, APPROVED, CONTACTED, UNSUBSCRIBED
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 model MentorshipSlot {
   id           String   @id @default(uuid())
@@ -498,7 +592,7 @@ model MentorshipBooking {
   questions    String?  @db.Text
   
   // Billing
-  amountPaid   Float    @default(0)
+  amountPaid   Decimal  @default(0) @db.Decimal(10, 2)
   isFree       Boolean  @default(false)
   
   createdAt    DateTime @default(now())

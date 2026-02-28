@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import * as TestController from '../controllers/test.controller';
-import { authenticateToken, authorizeRole } from '../middleware/auth.middleware';
+import { authenticateToken, authorizeRole, authenticateTokenOptional } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // Public / Student Routes
-router.get('/', TestController.listTests); // Everyone can list tests. Filters applied in controller if needed.
+router.get('/', authenticateTokenOptional, TestController.listTests); // Optional auth: filter unpublished for non-instructors
 router.get('/:id', authenticateToken, TestController.getTest); // IsEditor check inside handles hiding answers
 router.post('/:id/submit', authenticateToken, TestController.submitTest);
 router.get('/:id/leaderboard', authenticateToken, TestController.getLeaderboard);

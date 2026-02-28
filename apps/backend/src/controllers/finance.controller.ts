@@ -57,3 +57,15 @@ export const processPayout = async (req: Request, res: Response, next: NextFunct
         next(error);
     }
 };
+
+// Admin-only: Manually trigger earnings reconciliation for an instructor
+export const healInstructorEarnings = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { instructorId } = req.params;
+        if (!instructorId) return res.status(400).json({ message: 'instructorId is required' });
+        const result = await FinanceService.healMissingEarnings(instructorId);
+        res.json({ message: `Auto-heal complete`, ...result });
+    } catch (error) {
+        next(error);
+    }
+};

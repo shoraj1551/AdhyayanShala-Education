@@ -18,6 +18,8 @@ interface CreateTestDTO {
     totalMarks?: number;
     passMarks?: number;
     isPublished?: boolean;
+    availableAt?: Date | string;
+    expiresAt?: Date | string;
 }
 
 interface UpdateTestDTO {
@@ -28,6 +30,8 @@ interface UpdateTestDTO {
     totalMarks?: number;
     passMarks?: number;
     isPublished?: boolean;
+    availableAt?: Date | string;
+    expiresAt?: Date | string;
 }
 
 interface CreateQuestionDTO {
@@ -39,6 +43,8 @@ interface CreateQuestionDTO {
     negativeMarks?: number;
     order?: number;
     options: OptionDTO[];
+    textSolution?: string;
+    audioSolutionUrl?: string;
 }
 
 interface UpdateQuestionDTO {
@@ -50,19 +56,33 @@ interface UpdateQuestionDTO {
     negativeMarks?: number;
     order?: number;
     options?: OptionDTO[];
+    textSolution?: string;
+    audioSolutionUrl?: string;
 }
 
 export const getTestById = async (testId: string) => {
-    return await prisma.test.findUnique({
+    const test = await prisma.test.findUnique({
         where: { id: testId },
         include: {
             questions: {
                 include: {
-                    options: true
-                }
+                    options: true,
+                    solution: true
+                },
+                orderBy: { order: 'asc' }
             }
         }
     });
+
+    if (test && test.availableAt && new Date() < new Date(test.availableAt)) {
+        throw new Error("This test is not available yet.");
+    }
+
+    if (test && test.expiresAt && new Date() > new Date(test.expiresAt)) {
+        throw new Error("This test has expired.");
+    }
+
+    return test;
 };
 
 export const listTests = async () => {
@@ -225,10 +245,28 @@ export const submitTest = async (userId: string, testId: string, attemptId: stri
         }
     });
 
+    // Calculate Rank
+    const studentsAbove = await prisma.attempt.count({
+        where: {
+            testId,
+            status: "SUBMITTED",
+            score: { gt: score }
+        }
+    });
+
+    const totalParticipants = await prisma.attempt.count({
+        where: {
+            testId,
+            status: "SUBMITTED"
+        }
+    });
+
     return {
         attempt,
         totalPoints,
-        reflections
+        reflections,
+        rank: studentsAbove + 1,
+        totalParticipants
     };
 };
 

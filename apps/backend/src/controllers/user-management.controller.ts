@@ -46,3 +46,28 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: "Failed to update role" });
     }
 };
+export const createUser = async (req: AuthRequest, res: Response) => {
+    try {
+        const { name, email, password, role } = req.body;
+        const newUser = await UserManagementService.createUser({ name, email, password, role });
+        res.status(201).json(newUser);
+    } catch (error: any) {
+        console.error("Create User Error:", error);
+        if (error.code === 'P2002') {
+            return res.status(409).json({ message: "User with this email already exists" });
+        }
+        res.status(500).json({ message: "Failed to create user" });
+    }
+};
+export const updateUserDeletePermission = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { canDeleteAccount } = req.body;
+
+        const updatedUser = await UserManagementService.updateDeletePermission(id, canDeleteAccount);
+        res.json(updatedUser);
+    } catch (error) {
+        console.error("Update Delete Permission Error:", error);
+        res.status(500).json({ message: "Failed to update permission" });
+    }
+};

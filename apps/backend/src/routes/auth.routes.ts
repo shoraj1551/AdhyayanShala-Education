@@ -10,5 +10,9 @@ router.post('/login/verify-otp', AuthController.verifyLoginOtp);
 router.post('/guest', AuthController.guestLogin);
 router.get('/me', authenticateToken, AuthController.getMe);
 router.put('/profile', authenticateToken, AuthController.updateProfile);
+router.put('/password', authenticateToken, AuthController.changePassword);
+router.delete('/account', authenticateToken, AuthController.deleteMyAccount);
+
+
 
 export default router;

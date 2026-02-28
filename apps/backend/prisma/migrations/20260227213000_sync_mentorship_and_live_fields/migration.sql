@@ -7,12 +7,16 @@ ADD COLUMN "isFree" BOOLEAN NOT NULL DEFAULT false,
     ADD COLUMN "thumbnailUrl" TEXT,
     ADD COLUMN "promoVideoUrl" TEXT,
     ADD COLUMN "brochureUrl" TEXT,
-    ADD COLUMN "currency" TEXT NOT NULL DEFAULT 'INR';
+    ADD COLUMN "currency" TEXT NOT NULL DEFAULT 'INR',
+    DROP COLUMN IF EXISTS "meetingPlatform",
+    DROP COLUMN IF EXISTS "meetingLink",
+    DROP COLUMN IF EXISTS "schedule";
 -- AlterTable
 ALTER TABLE "LiveClassSettings"
 ADD COLUMN "recordings" JSONB,
     ADD COLUMN "notes" JSONB,
-    ADD COLUMN "moderatorEmails" JSONB;
+    ADD COLUMN "moderatorEmails" JSONB,
+    DROP COLUMN IF EXISTS "difficulty";
 -- CreateTable
 CREATE TABLE "MentorshipSlot" (
     "id" TEXT NOT NULL,

@@ -8,8 +8,10 @@ import {
     ConflictError,
     ValidationError,
     UnauthorizedError,
-    BadRequestError
+    BadRequestError,
+    NotFoundError
 } from '../lib/errors';
+
 
 import { Role } from '@prisma/client';
 
@@ -23,7 +25,10 @@ interface RegisterUserDTO {
     experience?: string;
     linkedin?: string;
     currentStatus?: string;
+
+    subStatus?: string;
     interests?: string;
+
 }
 
 interface LoginUserDTO {
@@ -56,14 +61,39 @@ export const registerUser = async (data: RegisterUserDTO) => {
             password: hashedPassword,
             name: data.name,
             role: data.role,
-            // Profile mappings
-            bio: data.bio,
-            expertise: data.expertise,
-            experience: data.experience,
-            linkedin: data.linkedin,
-            studentStatus: data.currentStatus,
-            interests: data.interests,
+            // Core Identity only here...
+
+            // Partitioned Records
+            wallet: {
+                create: {
+                    balance: 0,
+                    totalEarnings: 0
+                }
+            },
+            ...(data.role === 'INSTRUCTOR' ? {
+                instructorProfile: {
+                    create: {
+                        bio: data.bio,
+                        expertise: data.expertise,
+                        experience: data.experience,
+                        linkedin: data.linkedin
+                    }
+                }
+            } : {}),
+            ...(data.role === 'STUDENT' ? {
+                studentProfile: {
+                    create: {
+                        studentStatus: data.subStatus ? `${data.currentStatus}:${data.subStatus}` : data.currentStatus,
+                        interests: data.interests
+                    }
+                }
+            } : {})
         },
+        include: {
+            instructorProfile: true,
+            studentProfile: true,
+            wallet: true
+        }
     });
 
     const token = jwt.sign(
@@ -74,6 +104,7 @@ export const registerUser = async (data: RegisterUserDTO) => {
 
     return { user, token };
 };
+
 
 export const loginUser = async (data: LoginUserDTO) => {
     const user = await prisma.user.findUnique({
@@ -98,15 +129,18 @@ export const generateAdminOTP = async (userId: string, email: string) => {
     const otp = crypto.randomInt(100000, 1000000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
+    // Hash OTP before storing to prevent exposure on DB compromise
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
     await prisma.user.update({
         where: { id: userId },
         data: {
-            loginOtp: otp,
+            loginOtp: hashedOtp,
             loginOtpExpires: otpExpires
         }
     });
 
-    return otp;
+    return otp; // Return plaintext to send via email
 };
 
 export const sendAdminOTP = async (email: string, otp: string) => {
@@ -126,7 +160,9 @@ export const verifyAdminOTP = async (userId: string, otp: string) => {
         throw new BadRequestError('OTP expired');
     }
 
-    if (user.loginOtp !== otp) {
+    // Compare submitted OTP against hashed value
+    const isOtpValid = await bcrypt.compare(otp, user.loginOtp);
+    if (!isOtpValid) {
         throw new UnauthorizedError('Invalid OTP');
     }
 
@@ -181,19 +217,120 @@ export const generateToken = (user: { id: string, role: string }) => {
 export const getUserById = async (userId: string) => {
     const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, name: true, role: true, avatar: true }
+        include: {
+            instructorProfile: true,
+            studentProfile: true,
+            wallet: {
+                select: {
+                    balance: true,
+                    totalEarnings: true
+                    // bankDetails intentionally excluded from general fetch
+                }
+            }
+        }
     });
+
     return user;
 };
 
-export const updateUserProfile = async (userId: string, data: { name?: string; avatar?: string }) => {
+
+interface UpdateProfileDTO {
+    name?: string;
+    avatar?: string;
+    role?: string;
+    bio?: string;
+    expertise?: string;
+    experience?: string;
+    linkedin?: string;
+    studentStatus?: string;
+    studentSubStatus?: string;
+    interests?: string;
+}
+
+export const updateUserProfile = async (userId: string, data: UpdateProfileDTO) => {
+    // This now needs to handle nested updates
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
             name: data.name,
-            avatar: data.avatar
+            avatar: data.avatar,
+            instructorProfile: data.role === 'INSTRUCTOR' ? {
+                upsert: {
+                    create: {
+                        bio: data.bio,
+                        expertise: data.expertise,
+                        experience: data.experience,
+                        linkedin: data.linkedin
+                    },
+                    update: {
+                        bio: data.bio,
+                        expertise: data.expertise,
+                        experience: data.experience,
+                        linkedin: data.linkedin
+                    }
+                }
+            } : undefined,
+            studentProfile: data.role === 'STUDENT' ? {
+                upsert: {
+                    create: {
+                        studentStatus: data.studentStatus,
+                        studentSubStatus: data.studentSubStatus,
+                        interests: data.interests
+                    },
+                    update: {
+                        studentStatus: data.studentStatus,
+                        studentSubStatus: data.studentSubStatus,
+                        interests: data.interests
+                    }
+                }
+            } : undefined
         },
-        select: { id: true, email: true, name: true, role: true, avatar: true }
+        include: {
+            instructorProfile: true,
+            studentProfile: true,
+            wallet: {
+                select: { balance: true, totalEarnings: true }
+            }
+        }
     });
+
     return user;
 };
+
+
+export const updatePassword = async (userId: string, currentPass: string, newPass: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId }
+    });
+
+    if (!user) throw new NotFoundError("User not found");
+
+    const isMatch = await bcrypt.compare(currentPass, user.password);
+    if (!isMatch) throw new UnauthorizedError("Incorrect current password");
+
+    const hashedNewPassword = await bcrypt.hash(newPass, 10);
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword }
+    });
+};
+
+export const deleteUserAccount = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId }
+    });
+
+    if (!user) throw new NotFoundError("User not found");
+
+    // Students and Instructors must be allowed by Admin
+    if ((user.role === 'STUDENT' || user.role === 'INSTRUCTOR') && !user.canDeleteAccount) {
+        throw new UnauthorizedError("Account deletion is locked. Please contact support/admin to enable deletion.");
+    }
+
+    await prisma.user.delete({
+        where: { id: userId }
+    });
+};
+
+
