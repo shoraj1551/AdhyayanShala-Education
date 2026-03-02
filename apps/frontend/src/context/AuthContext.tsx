@@ -79,11 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (storedToken) {
             setToken(storedToken);
             // Verify token/Fetch user
-            api
+            api.get("/auth/me", storedToken)
                 .then((userData: BackendUserResponse) => {
                     setUser(flattenUser(userData));
                 })
-
                 .catch(() => {
                     logout();
                 })
