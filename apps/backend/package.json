@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "postinstall": "prisma generate",
-        "vercel-build": "npx prisma generate && npx prisma migrate resolve --rolled-back 20260228054500_float_to_decimal_money && npx prisma migrate deploy && tsc",
+        "vercel-build": "npx prisma generate && npx prisma migrate deploy && tsc",
         "dev": "nodemon src/server.ts",
         "build": "npx prisma generate && tsc",
         "start": "node dist/server.js",

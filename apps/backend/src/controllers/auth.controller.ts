@@ -215,7 +215,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     } catch (error: any) {
         Logger.error('[CHANGE PASSWORD] Error:', error);
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ message: 'Validation error', errors: error.errors });
+            return res.status(400).json({ message: 'Validation error', errors: error.issues });
         }
         res.status(400).json({ message: error.message || 'Error updating password' });
     }

@@ -37,7 +37,7 @@ export const getCourseAnalytics = async (courseId: string, instructorId: string)
     }
 
     const totalEnrollments = course.enrollments.length;
-    const totalRevenue = totalEnrollments * (course.discountedPrice || course.price);
+    const totalRevenue = totalEnrollments * Number(course.discountedPrice || course.price);
 
     // Calculate total lessons
     const allLessons = course.modules.flatMap(m => m.lessons);

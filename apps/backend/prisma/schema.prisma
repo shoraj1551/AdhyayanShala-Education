@@ -56,6 +56,8 @@ enum AttemptStatus {
 enum CourseType {
   VIDEO
   LIVE
+  TEXT
+  TEST_SERIES
 }
 
 model User {

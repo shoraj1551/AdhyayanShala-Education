@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, PayoutStatus } from '@prisma/client';
 import Logger from '../lib/logger';
 
 interface BankDetailsDTO {
@@ -74,8 +74,8 @@ export const healMissingEarnings = async (instructorId: string) => {
         Logger.debug(`[Finance] Course ${courseId}: ${enrollmentCounts[courseId]} enrolls, ${earningsCounts[courseId] || 0} earnings. Missing: ${missing}`);
         if (missing > 0) {
             const course = enrollments.find(e => e.courseId === courseId)?.course;
-            if (course && (course.price > 0 || (course.discountedPrice || 0) > 0)) {
-                const amount = course.discountedPrice || course.price;
+            if (course && (Number(course.price) > 0 || Number(course.discountedPrice || 0) > 0)) {
+                const amount = Number(course.discountedPrice || course.price);
                 Logger.info(`[Finance] Crediting ${missing} sales for course "${course.title}" at amount ₹${amount}`);
                 for (let i = 0; i < missing; i++) {
                     await recordCourseSale(instructorId, courseId, amount);
@@ -104,7 +104,7 @@ export const updateBankDetails = async (instructorId: string, details: BankDetai
 
 export const requestPayout = async (instructorId: string) => {
     const wallet = await prisma.wallet.findUnique({ where: { userId: instructorId } });
-    if (!wallet || wallet.balance <= 0) {
+    if (!wallet || Number(wallet.balance) <= 0) {
         throw new Error("Insufficient balance");
     }
 
@@ -114,7 +114,7 @@ export const requestPayout = async (instructorId: string) => {
     });
     if (pending) throw new Error("A payout request is already pending.");
 
-    const amount = wallet.balance;
+    const amount = Number(wallet.balance);
 
 
     // Create Payout Request
@@ -153,7 +153,7 @@ export const requestPayout = async (instructorId: string) => {
 
 export const getAdminPayouts = async (status?: string) => {
     const where: Prisma.PayoutWhereInput = {};
-    if (status) where.status = status;
+    if (status) where.status = status as PayoutStatus;
 
     return prisma.payout.findMany({
         where,
