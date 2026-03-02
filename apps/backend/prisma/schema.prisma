@@ -62,7 +62,7 @@ enum CourseType {
 
 model User {
   id        String   @id @default(uuid())
-  email     String   @unique
+  email     String
   name      String?
   password  String   // Hashed
   role      Role     @default(STUDENT)
@@ -99,6 +99,8 @@ model User {
   mentorshipSlots  MentorshipSlot[]   @relation("InstructorSlots")
   mentorshipsGiven MentorshipBooking[] @relation("MentorshipAsInstructor")
   mentorshipsTaken MentorshipBooking[] @relation("MentorshipAsStudent")
+
+  @@unique([email, role])
 }
 
 model InstructorProfile {

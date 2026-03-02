@@ -34,15 +34,16 @@ interface RegisterUserDTO {
 interface LoginUserDTO {
     email: string;
     password: string;
+    role?: string;
 }
 
 export const registerUser = async (data: RegisterUserDTO) => {
-    const existingUser = await prisma.user.findUnique({
-        where: { email: data.email },
+    const existingUser = await prisma.user.findFirst({
+        where: { email: data.email, role: data.role },
     });
 
     if (existingUser) {
-        throw new ConflictError('User already exists');
+        throw new ConflictError('User already registered with this role');
     }
 
     // Password strength validation
@@ -107,8 +108,15 @@ export const registerUser = async (data: RegisterUserDTO) => {
 
 
 export const loginUser = async (data: LoginUserDTO) => {
-    const user = await prisma.user.findUnique({
-        where: { email: data.email },
+    // Build query: if role is provided, find exact email+role match
+    // Otherwise, find any user with this email (backward compatible)
+    const whereClause: any = { email: data.email };
+    if (data.role) {
+        whereClause.role = data.role.toUpperCase();
+    }
+
+    const user = await prisma.user.findFirst({
+        where: whereClause,
     });
 
     if (!user) {
