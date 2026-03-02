@@ -146,10 +146,12 @@ export default function MentorshipPage() {
                                         </div>
 
                                         <div className="space-y-1">
-                                            <h3 className="text-xl font-bold tracking-tight text-zinc-900 group-hover:text-primary transition-colors flex items-center gap-1.5">
-                                                {mentor.name}
-                                                <UserCheck className="h-4 w-4 text-emerald-500" />
-                                            </h3>
+                                            <Link href={`/instructor/profile/${mentor.id}`} className="hover:underline">
+                                                <h3 className="text-xl font-bold tracking-tight text-zinc-900 group-hover:text-primary transition-colors flex items-center gap-1.5">
+                                                    {mentor.name}
+                                                    <UserCheck className="h-4 w-4 text-emerald-500" />
+                                                </h3>
+                                            </Link>
                                             <div className="flex items-center gap-1 text-zinc-500 font-semibold text-xs">
                                                 <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                                                 <span>4.9 rating</span>

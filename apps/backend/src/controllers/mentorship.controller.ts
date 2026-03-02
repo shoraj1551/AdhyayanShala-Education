@@ -104,3 +104,13 @@ export const getMyBookings = async (req: AuthRequest, res: Response, next: NextF
         next(error);
     }
 };
+
+export const getInstructorProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const profile = await MentorshipService.getPublicInstructorProfile(id);
+        res.json(profile);
+    } catch (error) {
+        next(error);
+    }
+};

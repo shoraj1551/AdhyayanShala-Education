@@ -15,6 +15,7 @@ router.post('/fee', authenticateToken, MentorshipController.updateFee);
 
 // Student routes
 router.get('/instructors', authenticateToken, MentorshipController.listInstructors);
+router.get('/instructors/:id/profile', authenticateToken, MentorshipController.getInstructorProfile);
 router.get('/instructors/:id/availability', authenticateToken, MentorshipController.getInstructorAvailability);
 router.post('/book', authenticateToken, MentorshipController.bookSession);
 router.get('/my-bookings', authenticateToken, MentorshipController.getMyBookings);
