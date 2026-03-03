@@ -135,9 +135,15 @@ export const getInstructorBookings = async (instructorId: string) => {
 };
 
 export const updateMentorshipFee = async (instructorId: string, fee: number) => {
-    return await prisma.instructorProfile.update({
+    // Use upsert: instructor may not have an InstructorProfile row
+    // (e.g., registered before InstructorProfile table was created)
+    return await prisma.instructorProfile.upsert({
         where: { userId: instructorId },
-        data: { mentorshipFee: fee }
+        update: { mentorshipFee: fee },
+        create: {
+            userId: instructorId,
+            mentorshipFee: fee
+        }
     });
 };
 
